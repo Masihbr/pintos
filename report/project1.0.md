@@ -402,11 +402,45 @@ pintos-debug: hit 'c' to continue, or 's' to step to intr_handler
 
 ## دیباگ
 
-۱۴.
+۱۴.<br/>
+mov    0x24(%esp),%eax i tries to access the address %esp+0x24 and is faced with page fault error. In order to solve this we'll move the stack pointer 0x24 back.
+one line changes in 
+```
+static bool
+setup_stack (void **esp)
+{
+  uint8_t *kpage;
+  bool success = false;
+
+  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  if (kpage != NULL)
+    {
+      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+      if (success)
+        *esp = PHYS_BASE - 0x24;
+      else
+        palloc_free_page (kpage);
+    }
+  return success;
+}
+```
+this only works for this program and should be set dynamically to always work.
 
 ۱۵.
+```
+# -*- perl -*-
+use strict;
+use warnings;
+use tests::tests;
+check_expected ([<<'EOF']);
+do-stack-align: exit(12)
+EOF
+pass;
+```
+because PHYS_BASE - 0x24 % 0x10 == 0xc
 
 ۱۶.
+
 
 ۱۷.
 
