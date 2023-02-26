@@ -368,6 +368,7 @@ pintos-debug: hit 'c' to continue, or 's' to step to intr_handler
 The "iret" instruction stands for Interrupt Return. The processor switches modes when executing the "iret" instruction because it needs to switch from the interrupt handler's stack frame to the caller's stack frame. This is accomplished by restoring the previously saved values of the registers, including the instruction pointer and stack pointer, which were saved on the stack when the interrupt or exception occurred. This then allows the processor to return control to the caller of the interrupt or exception.
 
 ۱۲.
+not different with if_
 ```
 (gdb) info registers
 eax            0x0      0
@@ -388,7 +389,16 @@ fs             0x23     35
 gs             0x23     35
 ```
 ۱۳.
-
+```
+(gdb) stepi
+pintos-debug: a page fault exception occurred in user mode
+pintos-debug: hit 'c' to continue, or 's' to step to intr_handler
+0xc0021b95 in intr0e_stub ()
+(gdb) backtrace 
+#0  0xc0021b95 in intr0e_stub ()
+(gdb) btpagefault
+#0  _start (argc=<unavailable>, argv=<unavailable>) at ../../lib/user/entry.c:9
+```
 
 ## دیباگ
 
