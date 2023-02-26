@@ -440,10 +440,47 @@ pass;
 because PHYS_BASE - 0x24 % 0x10 == 0xc
 
 ۱۶.
-
+```
+(gdb) disassemble 
+Dump of assembler code for function exit:
+   0x0804a2bc <+0>:     sub    $0x1c,%esp
+   0x0804a2bf <+3>:     pushl  0x20(%esp)
+   0x0804a2c3 <+7>:     push   $0x1
+=> 0x0804a2c5 <+9>:     int    $0x30
+   0x0804a2c7 <+11>:    add    $0x8,%esp
+   0x0804a2ca <+14>:    movl   $0x804b0d0,0xc(%esp)
+   0x0804a2d2 <+22>:    movl   $0x804ada0,0x8(%esp)
+   0x0804a2da <+30>:    movl   $0x53,0x4(%esp)
+   0x0804a2e2 <+38>:    movl   $0x804af5b,(%esp)
+   0x0804a2e9 <+45>:    call   0x804a22a <debug_panic>
+End of assembler dump.
+(gdb) x/2xw $esp
+0xbfffff88:     0x00000001      0x000000a2
+```
 
 ۱۷.
+```
+(gdb) print args[0]
+$1 = 1
+(gdb) print args[1]
+$2 = 162
+```
 
-۱۸.
+۱۸.<br/>
+temporary is a semaphore struct and it is process_execute it is initialized to value=0, when temporary is 0 the sema_down function (located at process_wait) will wait (sleep) until sema_up is called and then it can stop waiting and return.
+<br/>
+semaphore is used for resource sharing (here page).
 
-۱۹.
+۱۹.<br/>
+```
+(gdb) info threads 
+  Id   Target Id         Frame
+* 1    Thread <main>     sema_down (sema=sema@entry=0xc00372fc <console_lock+4>) at ../../threads/synch.c:62
+(gdb) dumplist &all_list thread allelem
+pintos-debug: dumplist #0: 0xc000e000 {tid = 1, status = THREAD_RUNNING, name = "main", '\000' <repeats 11 times>, stack = 0xc000eeac "\001", priority =
+ 31, allelem = {prev = 0xc0035910 <all_list>, next = 0xc0104020}, elem = {prev = 0xc0035920 <ready_list>, next = 0xc0035928 <ready_list+8>}, pagedir = 0
+x0, magic = 3446325067}
+pintos-debug: dumplist #1: 0xc0104000 {tid = 2, status = THREAD_BLOCKED, name = "idle", '\000' <repeats 11 times>, stack = 0xc0104f34 "", priority = 0,
+allelem = {prev = 0xc000e020, next = 0xc0035918 <all_list+8>}, elem = {prev = 0xc0035920 <ready_list>, next = 0xc0035928 <ready_list+8>}, pagedir = 0x0,
+ magic = 3446325067}
+```
