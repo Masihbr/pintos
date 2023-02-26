@@ -291,9 +291,102 @@ $2 = {edi = 0x0, esi = 0x0, ebp = 0x0, esp_dummy = 0x0, ebx = 0x0, edx = 0x0, ec
 ```
 
 ۱۱.
+```
+eax            0x0      0
+ecx            0x0      0
+edx            0x0      0
+ebx            0x0      0
+esp            0xc010af94       0xc010af94
+ebp            0x0      0x0
+esi            0x0      0
+edi            0x0      0
+eip            0xc0021b19       0xc0021b19 <intr_exit+10>
+eflags         0x292    [ AF SF IF ]
+cs             0x8      8
+ss             0x10     16
+ds             0x23     35
+es             0x23     35
+fs             0x23     35
+gs             0x23     35
+```
+
+```
+(gdb) info registers
+eax            0x0      0
+ecx            0x0      0
+edx            0x0      0
+ebx            0x0      0
+esp            0xc0000000       0xc0000000
+ebp            0x0      0x0
+esi            0x0      0
+edi            0x0      0
+eip            0x8048754        0x8048754
+eflags         0x202    [ IF ]
+cs             0x1b     27
+ss             0x23     35
+ds             0x23     35
+es             0x23     35
+fs             0x23     35
+gs             0x23     35
+```
+
+```
+(gdb) next
+Cannot find bounds of current function
+```
+
+```
+(gdb) info registers
+eax            0x0      0
+ecx            0x0      0
+edx            0x0      0
+ebx            0x0      0
+esp            0xc0000000       0xc0000000
+ebp            0x0      0x0
+esi            0x0      0
+edi            0x0      0
+eip            0x8048754        0x8048754
+eflags         0x202    [ IF ]
+cs             0x1b     27
+ss             0x23     35
+ds             0x23     35
+es             0x23     35
+fs             0x23     35
+gs             0x23     35
+```
+
+```
+(gdb) c
+Continuing.
+
+Program stopped.
+pintos-debug: a page fault exception occurred in user mode
+pintos-debug: hit 'c' to continue, or 's' to step to intr_handler
+0xc0021b95 in intr0e_stub ()
+```
+
+The "iret" instruction stands for Interrupt Return. The processor switches modes when executing the "iret" instruction because it needs to switch from the interrupt handler's stack frame to the caller's stack frame. This is accomplished by restoring the previously saved values of the registers, including the instruction pointer and stack pointer, which were saved on the stack when the interrupt or exception occurred. This then allows the processor to return control to the caller of the interrupt or exception.
 
 ۱۲.
-
+```
+(gdb) info registers
+eax            0x0      0
+ecx            0x0      0
+edx            0x0      0
+ebx            0x0      0
+esp            0xc0000000       0xc0000000
+ebp            0x0      0x0
+esi            0x0      0
+edi            0x0      0
+eip            0x8048754        0x8048754
+eflags         0x202    [ IF ]
+cs             0x1b     27
+ss             0x23     35
+ds             0x23     35
+es             0x23     35
+fs             0x23     35
+gs             0x23     35
+```
 ۱۳.
 
 
