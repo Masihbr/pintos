@@ -72,7 +72,19 @@ struct thread
 ------------
 > توضیح دهید خواندن و نوشتن داده‌های کاربر از داخل هسته، در کد شما چگونه انجام شده است.
 
-> فرض کنید یک فراخوانی سیستمی باعث شود یک صفحه‌ی کامل (۴۰۹۶ بایت) از فضای کاربر در فضای هسته کپی شود. بیشترین و کمترین تعداد بررسی‌‌های جدول صفحات (page table) چقدر است؟ (تعداد دفعاتی که `pagedir_get_page()` صدا زده می‌شود.) در‌ یک فراخوانی سیستمی که فقط ۲ بایت کپی می‌شود چطور؟ آیا این عددها می‌توانند بهبود یابند؟ چقدر؟
+> 8. فرض کنید یک فراخوانی سیستمی باعث شود یک صفحه‌ی کامل (۴۰۹۶ بایت) از فضای کاربر در فضای هسته کپی شود. بیشترین و کمترین تعداد بررسی‌‌های جدول صفحات (page table) چقدر است؟ (تعداد دفعاتی که `pagedir_get_page()` صدا زده می‌شود.) در‌ یک فراخوانی سیستمی که فقط ۲ بایت کپی می‌شود چطور؟ آیا این عددها می‌توانند بهبود یابند؟ چقدر؟
+
+- **Data is 4096B**
+
+    Since our page size is also 4096B, this data can be fully available in a single page and so will only need ***one*** call to `pagedir_get_page()`.
+
+    On the other hand, this data can be available in multiple pages and so at maximum we might need to call `pagedir_get_page()` ***4096*** times to retrieve the bytes from different pages.
+
+- **Data is 2B**
+
+    If both bytes of the data available in a single page, there's only ***one*** `pagedir_get_page()` calls needed.
+
+    If the two bytes are available in different pages, there's ***two*** `pagedir_get_page()` calls needed
 
 > 9. پیاده‌سازی فراخوانی سیستمی `wait` را توضیح دهید و بگویید چگونه با پایان یافتن پردازه در ارتباط است.
 
