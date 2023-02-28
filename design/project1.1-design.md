@@ -66,7 +66,7 @@ bool push_args_in_stack(void **esp, process_args);
 داده‌ساختار‌ها
 ----------------
 > در این قسمت تعریف هر یک از `struct` ها، اعضای `struct` ها، متغیرهای سراسری یا ایستا، `typedef` ها یا `enum` هایی که ای.جاد کرده‌اید یا تغییر داده‌اید را بنویسید و دلیل هر کدام را در حداکثر ۲۵ کلمه توضیح دهید.
-```diff c
+```diff
 struct thread
   {
     /* Owned by thread.c. */
@@ -102,6 +102,40 @@ struct thread
 
 > 8. فرض کنید یک فراخوانی سیستمی باعث شود یک صفحه‌ی کامل (۴۰۹۶ بایت) از فضای کاربر در فضای هسته کپی شود. بیشترین و کمترین تعداد بررسی‌‌های جدول صفحات (page table) چقدر است؟ (تعداد دفعاتی که `pagedir_get_page()` صدا زده می‌شود.) در‌ یک فراخوانی سیستمی که فقط ۲ بایت کپی می‌شود چطور؟ آیا این عددها می‌توانند بهبود یابند؟ چقدر؟
 
+- **حالت داده‌ی ۴۰۹۶بایتی**
+
+  از آنجا که اندازه 
+  page
+  ما خود نیز ۴۰۹۶ بایت است، در حالت مینیمم این داده میتواند بصورت یکجا در یک 
+  page
+  موجود باشد و درنتیجه تنها 
+  ***یک***
+  بار تابع
+  `pagedir_get_page()`
+  صدا میشود.
+  
+  از طرفی این داده میتواند در 
+  page
+  های مختلف پخش باشد و درنتیجه در حالت ماکسیمم نیاز خواهیم داشت تابع
+  `pagedir_get_page()`
+  را 
+  ***۴۰۹۶***
+  بار صدا کنیم تا بایت‌ها را از ۴۰۹۶ صفحه مختلف بیابیم.
+
+- **حالت داده‌ی ۲بایتی**
+
+  اگر هر دو بایت داده در یک صفحه باشند، درحالت مینیمم تنها
+  ***یک***
+  بار تابع
+  `pagedir_get_page()`
+  صدا میشود.
+
+  اما اگر دو بایت داده هریک در صفحه متفاوتی باشند، تابع
+  `pagedir_get_page()`
+  ***دو***
+  بار صدا میشود.
+
+<!-- 
 - **Data is 4096B**
 
     Since our page size is also 4096B, this data can be fully available in a single page and so will only need ***one*** call to `pagedir_get_page()`.
@@ -113,6 +147,7 @@ struct thread
     If both bytes of the data available in a single page, there's only ***one*** `pagedir_get_page()` calls needed.
 
     If the two bytes are available in different pages, there's ***two*** `pagedir_get_page()` calls needed
+-->
 
 > 9. پیاده‌سازی فراخوانی سیستمی `wait` را توضیح دهید و بگویید چگونه با پایان یافتن پردازه در ارتباط است.
 
@@ -123,8 +158,54 @@ Add an `if` case for `SYS_WAIT` in `pintos/src/userprog/syscall::syscall_handler
 همگام‌سازی
 ---------------
 > 11. فراخوانی سیستمی `exec` نباید قبل از پایان بارگذاری فایل اجرایی برگردد، چون در صورتی که بارگذاری فایل اجرایی با خطا مواجه شود باید `-۱` برگرداند. کد شما چگونه از این موضوع اطمینان حاصل می‌کند؟ چگونه وضعیت موفقیت یا شکست در اجرا به ریسه‌ای که `exec` را فراخوانی کرده اطلاع داده می‌شود؟
+- **تغییرات فایل `pintos/src/threads/thread.h`**
+```c
+struct thread *find_thread (tid_t tid);
+```
+- **تغییرات فایل `pintos/src/threads/thread.c`**
+```c
+struct thread *
+find_thread (tid_t tid)
+{
+  struct list_elem *e;
+  for (e = list_begin (&all_list);
+       e != list_end (&all_list);
+       e = list_next (e)) {
+    struct thread *t = list_entry (e, struct thread, allelem);
+    if (t->tid == tid) return t;
+  }
+  return NULL;
+}
+```
 
+- **تغییرات فایل `pintos/src/userprog/process.c`**
+```diff
+process_execute (const char *file_name)
+{
+  ...
 
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
++  sema_down(&find_thread(tid)->sema);
+
+  ...
+}
+```
+```diff
+static void
+start_process (void *file_name_)
+{
+  ...
+
+  success = load (file_name, &if_.eip, &if_.esp);
+  
++  /* After file load finished notify the parent thread that was waiting. */
++  if (!success)
++    thread_current()->return_value = -1;
++  sema_up(&thread_current()->sema);
+
+  ...
+}
+```
 
 > پردازه‌ی والد P و پردازه‌ی فرزند C را درنظر بگیرید. هنگامی که P فراخوانی `wait(C)` را اجرا می‌کند و C  هنوز خارج نشده است، توضیح دهید که چگونه همگام‌سازی مناسب را برای جلوگیری از ایجاد شرایط مسابقه (race condition) پیاده‌سازی کرده‌اید. وقتی که C از قبل خارج شده باشد چطور؟ در هر حالت چگونه از آزاد شدن تمامی منابع اطمینان حاصل می‌کنید؟ اگر P بدون منتظر ماندن، قبل از C خارج شود چطور؟ اگر بدون منتظر ماندن بعد از C خارج شود چطور؟ آیا حالت‌های خاصی وجود دارد؟
 

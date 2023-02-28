@@ -43,6 +43,7 @@ process_execute (const char *file_name)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  sema_down(&find_thread(tid)->sema);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   return tid;
@@ -63,6 +64,11 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
+  
+  /* After file load finished notify the parent thread that was waiting. */
+  if (!success)
+    thread_current()->return_value = -1;
+  sema_up(&thread_current()->sema);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
