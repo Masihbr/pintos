@@ -158,10 +158,12 @@ Add an `if` case for `SYS_WAIT` in `pintos/src/userprog/syscall::syscall_handler
 همگام‌سازی
 ---------------
 > 11. فراخوانی سیستمی `exec` نباید قبل از پایان بارگذاری فایل اجرایی برگردد، چون در صورتی که بارگذاری فایل اجرایی با خطا مواجه شود باید `-۱` برگرداند. کد شما چگونه از این موضوع اطمینان حاصل می‌کند؟ چگونه وضعیت موفقیت یا شکست در اجرا به ریسه‌ای که `exec` را فراخوانی کرده اطلاع داده می‌شود؟
+
 - **تغییرات فایل `pintos/src/threads/thread.h`**
 ```c
 struct thread *find_thread (tid_t tid);
 ```
+
 - **تغییرات فایل `pintos/src/threads/thread.c`**
 ```c
 struct thread *
