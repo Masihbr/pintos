@@ -140,6 +140,34 @@ Add an `if` case for `SYS_WAIT` in `pintos/src/userprog/syscall::syscall_handler
 ===========
 > تستی را که هنگام اجرای فراخوانی سیستمی از یک اشاره‌گر پشته‌ی(esp) نامعتبر استفاده کرده است بیابید. پاسخ شما باید دقیق بوده و نام تست و چگونگی کارکرد آن را شامل شود.
 
+در [این فایل](../pintos/src/tests/userprog/sc-bad-sp.c) هنگام system call  اشاره‌گر %esp به یک آدرس بد اشاره می‌کند.
+```c
+/* Invokes a system call with the stack pointer (%esp) set to a
+   bad address.  The process must be terminated with -1 exit
+   code.
+
+   For Project 3: The bad address lies approximately 64MB below
+   the code segment, so there is no ambiguity that this attempt
+   must be rejected even after stack growth is implemented.
+   Moreover, a good stack growth heuristics should probably not
+   grow the stack for the purpose of reading the system call
+   number and arguments. */
+
+#include "tests/lib.h"
+#include "tests/main.h"
+
+void
+test_main (void)
+{
+  asm volatile ("movl $.-(64*1024*1024), %esp; int $0x30");
+  // movl $.-(64*1024*1024), %esp; :: This instructions tells the processor that the stack should be located at the address -(64*1024*1024) from the current position of the instruction pointer (%eip). 
+  // int $0x30; :: system call 
+  fail ("should have called exit(-1)");
+}
+```
+این تست چک می‌کند که آیا یک system call با آدرس آرگومان نامعتبر به درستی کار‌ کرده و با کد 1- خارج می‌شود یا خیر. برای این تست پوینتر استک به حدود 64 مگابایت زیر بخش کد اشاره می‌کند. اگر بتوانیم این آدرس بد (خارج از محدوده)
+تشخیص دهیم پراسس با کد 1- خارج می‌شود و در غیر این صورت آن آدرس خواهنده شده و پراسس ادامه پیدا می‌کند که باعث رد شدن تست است.
+
 > تستی را که هنگام اجرای فراخوانی سیستمی از یک اشاره‌گر پشته‌ی معتبر استفاده کرده ولی اشاره‌گر پشته آنقدر به مرز صفحه نزدیک است که برخی از آرگومان‌های فراخوانی سیستمی در جای نامعتبر مموری قرار گرفته اند مشخص کنید. پاسخ شما باید دقیق بوده و نام تست و چگونگی کارکرد آن را شامل شود.یک قسمت از خواسته‌های تمرین را که توسط مجموعه تست موجود تست نشده‌است، نام ببرید. سپس مشخص کنید تستی که این خواسته را پوشش بدهد چگونه باید باشد.
 
 سوالات نظرخواهی
