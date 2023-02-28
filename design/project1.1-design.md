@@ -161,14 +161,44 @@ test_main (void)
 {
   asm volatile ("movl $.-(64*1024*1024), %esp; int $0x30");
   // movl $.-(64*1024*1024), %esp; :: This instructions tells the processor that the stack should be located at the address -(64*1024*1024) from the current position of the instruction pointer (%eip). 
-  // int $0x30; :: system call 
+  // int $0x30; :: an interrupt for system call
   fail ("should have called exit(-1)");
 }
 ```
 این تست چک می‌کند که آیا یک system call با آدرس آرگومان نامعتبر به درستی کار‌ کرده و با کد 1- خارج می‌شود یا خیر. برای این تست پوینتر استک به حدود 64 مگابایت زیر بخش کد اشاره می‌کند. اگر بتوانیم این آدرس بد (خارج از محدوده)
 تشخیص دهیم پراسس با کد 1- خارج می‌شود و در غیر این صورت آن آدرس خواهنده شده و پراسس ادامه پیدا می‌کند که باعث رد شدن تست است.
 
-> تستی را که هنگام اجرای فراخوانی سیستمی از یک اشاره‌گر پشته‌ی معتبر استفاده کرده ولی اشاره‌گر پشته آنقدر به مرز صفحه نزدیک است که برخی از آرگومان‌های فراخوانی سیستمی در جای نامعتبر مموری قرار گرفته اند مشخص کنید. پاسخ شما باید دقیق بوده و نام تست و چگونگی کارکرد آن را شامل شود.یک قسمت از خواسته‌های تمرین را که توسط مجموعه تست موجود تست نشده‌است، نام ببرید. سپس مشخص کنید تستی که این خواسته را پوشش بدهد چگونه باید باشد.
+> تستی را که هنگام اجرای فراخوانی سیستمی از یک اشاره‌گر پشته‌ی معتبر استفاده کرده ولی اشاره‌گر پشته آنقدر به مرز صفحه نزدیک است که برخی از آرگومان‌های فراخوانی سیستمی در جای نامعتبر مموری قرار گرفته اند مشخص کنید. پاسخ شما باید دقیق بوده و نام تست و چگونگی کارکرد آن را شامل شود.
+
+
+در [این فایل](../pintos/src/tests/userprog/sc-bad-arg.c) هنگام system call  اشاره‌گر %esp به یک آدرس بد اشاره می‌کند.
+```c
+/* Sticks a system call number (SYS_EXIT) at the very top of the
+   stack, then invokes a system call with the stack pointer
+   (%esp) set to its address.  The process must be terminated
+   with -1 exit code because the argument to the system call
+   would be above the top of the user address space. */
+
+#include <syscall-nr.h>
+#include "tests/lib.h"
+#include "tests/main.h"
+
+void
+test_main (void)
+{
+  asm volatile ("movl $0xbffffffc, %%esp; movl %0, (%%esp); int $0x30"
+                : : "i" (SYS_EXIT));
+  // movl $0xbffffffc, %%esp; :: moves the value 0xbffffffc into the register esp
+  // movl %0, (%%esp); :: moves the value of the 0th argument of the function into the memory location pointed to by esp.
+  // int $0x30; :: an interrupt for system call
+  fail ("should have called exit(-1)");
+}
+```
+
+با توجه به اینکه PHYS_BASE از آدرس 0xc000 0000 شروع می‌شود و در این برنامه آدرس 0xbfff fffc مورد اشاره استک است. با فراخوانی سیستم کال و با دسترسی یافتن به جایی بیش از 4 بایت از شروع استک  باید با خطا مواجه شویم و با کد 1- از برنامه خارج شویم. این تست این موضوع را چک می‌کند. استفاده از SYS_EXIT چون دو آرگیومنت دارد و حتما منجر به ارور می‌شود.
+
+> یک قسمت از خواسته‌های تمرین را که توسط مجموعه تست موجود تست نشده‌است، نام ببرید. سپس مشخص کنید تستی که این خواسته را پوشش بدهد چگونه باید باشد.
+
 
 سوالات نظرخواهی
 ==============
