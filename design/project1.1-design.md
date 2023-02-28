@@ -87,6 +87,7 @@ struct thread
 +    struct list children;               /* List of this thread's children. */
 +    int return_value;                   /* The return value of this thread. */
 +    struct semaphore sema;              /* Semaphore for exec and wait. */
++    struct list file_descs;             /* The list of this thread's File Descriptors. */
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
@@ -96,7 +97,24 @@ struct thread
   };
 ```
 
-> توضیح دهید که توصیف‌کننده‌های فایل چگونه به فایل‌های باز مربوط می‌شوند. آیا این توصیف‌کننده‌ها در کل سیستم‌عامل به‌طور یکتا مشخص می‌شوند یا فقط برای هر پردازه یکتا هستند؟
+> 6. توضیح دهید که توصیف‌کننده‌های فایل چگونه به فایل‌های باز مربوط می‌شوند. آیا این توصیف‌کننده‌ها در کل سیستم‌عامل به‌طور یکتا مشخص می‌شوند یا فقط برای هر پردازه یکتا هستند؟
+
+هر
+thread
+یک لیستی از
+file descriptorهای
+مورد استفاده دارد. هر یک از این
+file descriptorها
+در آن پردازه یکتا هستند اما در کل سیستم‌عامل یکتا نیستند. علاوه بر این، مقادیر 0 و 1 بترتیب برای
+`STDIN_FILENO`
+و
+`STDOUT_FILENO`
+رزرو شده است.
+همچنین اگر یک فایل توسط یک پردازه چندین بار باز شود، هربار
+file descriptor
+متفاوتی دریافت میکند. همچنین یک پردازه به
+file descriptorهای
+پردازه پدر خود دسترسی ندارد و برعکس.
 
 الگوریتم‌ها
 ------------
