@@ -96,10 +96,6 @@ struct thread
     struct list_elem elem;              /* List element. */
 
 #ifdef USERPROG
-    pid_t pid;                          /* This Thread's Process's identifier. */
-    struct list children;               /* List of this thread's children. */
-    int return_value;                   /* The return value of this thread. */
-    struct semaphore sema;              /* Semaphore for exec and wait. */
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
@@ -128,7 +124,6 @@ void thread_unblock (struct thread *);
 struct thread *thread_current (void);
 tid_t thread_tid (void);
 const char *thread_name (void);
-struct thread *find_thread (tid_t tid);
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
