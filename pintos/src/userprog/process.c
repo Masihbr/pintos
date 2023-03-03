@@ -19,8 +19,19 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+#define MAX_ARGC 64
+#define MAX_ARG_LEN 128
+
+typedef struct process_args
+  {
+    char** argv;
+    int argc;
+  } 
+process_args;
+
 static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
+process_args* get_process_args (const char *cmd_line);
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
 /* Starts a new thread running a user program loaded from
@@ -200,11 +211,35 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+bool push_args_in_stack (void **esp, process_args* p_args);
+static bool setup_stack (void **esp, process_args* p_args);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
                           bool writable);
+
+/**/
+process_args* 
+get_process_args (const char *cmd_line)
+{
+  char *token, *save_ptr;
+  int argc = 0;
+  char* argv[MAX_ARGC];
+
+  for (token = strtok_r (cmd_line, " ", &save_ptr); token != NULL;
+      token = strtok_r (NULL, " ", &save_ptr))
+  {
+    argv[argc] = token;
+    argc++;
+  }
+  argv[argc] = NULL;
+  
+  process_args* p_args = malloc(sizeof(process_args));
+  p_args->argc = argc;
+  p_args->argv = argv;
+
+  return p_args;
+}
 
 /* Loads an ELF executable from FILE_NAME into the current thread.
    Stores the executable's entry point into *EIP
@@ -225,6 +260,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
   if (t->pagedir == NULL)
     goto done;
   process_activate ();
+
+  process_args* p_args = get_process_args(file_name);
 
   /* Open executable file. */
   file = filesys_open (file_name);
@@ -307,7 +344,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp, p_args))
     goto done;
 
   /* Start address. */
@@ -429,10 +466,48 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   return true;
 }
 
+/**/
+bool 
+push_args_in_stack (void **esp, process_args* p_args)
+{
+  int i;
+  char* argv_ptr[MAX_ARGC];
+
+  for (i = 0; i < p_args->argc; i++)
+  {
+    size_t tok_len = strlen (p_args->argv[i]) + 1;
+    *esp -= tok_len;
+    memcpy (*esp, p_args->argv[i], tok_len);
+    argv_ptr[i] = *esp;
+  }
+
+  int stack_align = ((size_t)(*esp) - (p_args->argc * 4) - 3 * 4) % 16;
+  *esp -= stack_align;
+  memset (*esp, 0, stack_align);
+
+  *esp -= 4;
+  memset (*esp, 0, 4);
+
+  for (int i = p_args->argc - 1; i >= 0; i--)
+  {
+    *esp -= 4;
+    memcpy (*esp, argv_ptr[i], 4);
+  }
+
+  *esp -= 4;
+  memset(*esp, (size_t)(*esp) + 4, 4);
+  *esp -= 4;
+  memset(*esp, p_args->argc, 4);
+  *esp -= 4;
+  memset (*esp, 0, 4);
+
+  return true;
+}
+
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp)
+setup_stack (void **esp, process_args* p_args)
 {
   uint8_t *kpage;
   bool success = false;
@@ -442,7 +517,10 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 0x24;
+      {
+        *esp = PHYS_BASE;
+        push_args_in_stack(esp, p_args);
+      }
       else
         palloc_free_page (kpage);
     }
