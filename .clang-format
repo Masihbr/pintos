@@ -1,0 +1,9 @@
+---
+# Use the GNU style as a base
+BasedOnStyle: GNU
+
+# Override the options specific to this function
+IndentWidth: 2
+TabWidth: 2
+SpaceBeforeParens: Always
+SpaceAfterCStyleCast: true
