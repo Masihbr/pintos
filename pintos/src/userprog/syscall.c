@@ -3,6 +3,7 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "lib/stdio.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -31,5 +32,17 @@ syscall_handler (struct intr_frame *f UNUSED)
       f->eax = args[1];
       printf ("%s: exit(%d)\n", &thread_current ()->name, args[1]);
       thread_exit ();
+    }
+
+  if (args[0] == SYS_WRITE)
+    {
+      int fd = (int) args[1];
+      char *buffer = (char *) args[2];
+      unsigned size = (unsigned) args[3];
+      if (fd == STDOUT_FILENO)
+        {
+          putbuf (buffer, size);
+          f->eax = size; /* retrun val */
+        }
     }
 }
