@@ -20,11 +20,11 @@
 #include "threads/vaddr.h"
 
 #define MAX_ARGC 64
-#define MAX_ARG_LEN 128
+#define MAX_ARG_LEN 256
 
 typedef struct process_args
   {
-    char** argv;
+    char **argv;
     int argc;
   } 
 process_args;
@@ -222,23 +222,23 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 process_args* 
 get_process_args (const char *cmd_line)
 {
-  char *token, *save_ptr;
-  int argc = 0;
-  char* argv[MAX_ARGC];
+    char *token = malloc (MAX_ARG_LEN * sizeof (char)), *save_ptr;
+    const char delim[2] = " ";
+    process_args *p_args = malloc (sizeof (process_args *));
+    p_args->argc = 0;
+    p_args->argv = malloc (MAX_ARG_LEN * sizeof (char));
 
-  for (token = strtok_r (cmd_line, " ", &save_ptr); token != NULL;
-      token = strtok_r (NULL, " ", &save_ptr))
-  {
-    argv[argc] = token;
-    argc++;
-  }
-  argv[argc] = NULL;
-  
-  process_args* p_args = malloc(sizeof(process_args));
-  p_args->argc = argc;
-  p_args->argv = argv;
+    for (token = strtok_r (cmd_line, delim, &save_ptr); token != NULL;
+         token = strtok_r (NULL, delim, &save_ptr))
+    {
+      size_t tok_len = strlen (token) + 1;
+      p_args->argv[p_args->argc] = malloc (tok_len);
+      strlcpy (p_args->argv[p_args->argc], token, tok_len);
+      p_args->argc++;
+    }
+    p_args->argv[p_args->argc] = NULL;
 
-  return p_args;
+    return p_args;
 }
 
 /* Loads an ELF executable from FILE_NAME into the current thread.
@@ -471,35 +471,47 @@ bool
 push_args_in_stack (void **esp, process_args* p_args)
 {
   int i;
-  char* argv_ptr[MAX_ARGC];
+  char **argv_ptr = malloc(MAX_ARGC * 4);
 
-  for (i = 0; i < p_args->argc; i++)
+  for (i = p_args->argc - 1; i >= 0; i--)
   {
     size_t tok_len = strlen (p_args->argv[i]) + 1;
     *esp -= tok_len;
     memcpy (*esp, p_args->argv[i], tok_len);
     argv_ptr[i] = *esp;
   }
+  // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
-  int stack_align = ((size_t)(*esp) - (p_args->argc * 4) - 3 * 4) % 16;
+  int stack_align = ((size_t)(*esp) - (p_args->argc + 3) * 4 - 1) % 16;
   *esp -= stack_align;
   memset (*esp, 0, stack_align);
+  // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
-  *esp -= 4;
-  memset (*esp, 0, 4);
+  *esp -= 1;
+  memset (*esp, 0, 1);
+  // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
   for (int i = p_args->argc - 1; i >= 0; i--)
   {
-    *esp -= 4;
-    memcpy (*esp, argv_ptr[i], 4);
+    *esp -= sizeof(char*);
+    memcpy (*esp, &argv_ptr[i], sizeof(char*));
   }
+  // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
+  char *argv_addr = *esp;
   *esp -= 4;
-  memset(*esp, (size_t)(*esp) + 4, 4);
-  *esp -= 4;
-  memset(*esp, p_args->argc, 4);
-  *esp -= 4;
-  memset (*esp, 0, 4);
+  memcpy(*esp, &argv_addr, 4);
+  // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
+
+  *esp -= sizeof(int);
+  memcpy(*esp, &p_args->argc, sizeof(int));
+  // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
+  
+  *esp -= sizeof(void*);
+  memset (*esp, 0, sizeof(void*));
+  // printf("final: \n");
+  // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
+  // hex_dump(0xbfffff00, 0xbfffff00, 1000, true);
 
   return true;
 }
