@@ -1,9 +1,9 @@
 #include "userprog/syscall.h"
-#include <stdio.h>
-#include <syscall-nr.h>
+#include "lib/stdio.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
-#include "lib/stdio.h"
+#include <stdio.h>
+#include <syscall-nr.h>
 
 static void syscall_handler (struct intr_frame *);
 
@@ -16,7 +16,7 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
-  uint32_t* args = ((uint32_t*) f->esp);
+  uint32_t *args = ((uint32_t *) f->esp);
 
   /*
    * The following print statement, if uncommented, will print out the syscall
@@ -34,7 +34,18 @@ syscall_handler (struct intr_frame *f UNUSED)
       thread_exit ();
     }
 
-  if (args[0] == SYS_WRITE)
+  else if (args[0] == SYS_PRACTICE)
+    {
+      int num = args[1];
+      f->eax = num + 1;
+    }
+
+  else if (args[0] == SYS_HALT)
+    {
+      shutdown_power_off();
+    }
+
+  else if (args[0] == SYS_WRITE)
     {
       int fd = (int) args[1];
       char *buffer = (char *) args[2];
