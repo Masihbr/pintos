@@ -100,6 +100,7 @@ struct thread
     int return_value;                   /* The return value of this thread. */
     struct semaphore sema;              /* Semaphore for exec and wait. */
     struct list file_descs;             /* The list of this thread's File Descriptors. */
+    struct file *executable_file;       /* The executable file. */
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
