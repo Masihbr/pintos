@@ -89,7 +89,6 @@ syscall_handler (struct intr_frame *f)
   else if (args[0] == SYS_EXEC)
     {
       char *cmd = args[1];
-      printf("cmd: %s\n", cmd);
       f->eax = process_execute(cmd);
     }
 

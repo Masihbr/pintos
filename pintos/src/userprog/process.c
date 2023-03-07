@@ -100,10 +100,21 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED)
+process_wait (tid_t child_tid)
 {
-  sema_down (&temporary);
-  return 0;
+  // sema_down (&temporary);
+  // return 0;
+
+  // struct thread *child = find_child_thread (child_tid);
+  struct thread *child = find_thread (child_tid);
+  if (child != NULL)
+    {
+      if (child->status != THREAD_DYING)
+        sema_down (&child->sema);
+      return child->return_value;
+    }
+  else
+    return -1;
 }
 
 /* Free the current process's resources. */

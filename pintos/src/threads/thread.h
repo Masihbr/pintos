@@ -96,7 +96,7 @@ struct thread
     struct list_elem elem;              /* List element. */
 
 #ifdef USERPROG
-    struct list children;               /* List of this thread's children. */
+   //  struct list children;               /* List of this thread's children. */
     int return_value;                   /* The return value of this thread. */
     struct semaphore sema;              /* Semaphore for exec and wait. */
     struct list file_descs;             /* The list of this thread's File Descriptors. */
@@ -121,6 +121,8 @@ void thread_print_stats (void);
 
 typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
+struct thread *find_thread (tid_t tid);
+// struct thread *find_child_thread (tid_t tid);
 
 void thread_block (void);
 void thread_unblock (struct thread *);

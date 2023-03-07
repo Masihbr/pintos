@@ -204,6 +204,31 @@ thread_create (const char *name, int priority,
   return tid;
 }
 
+struct thread *
+find_thread (tid_t tid)
+{
+  for (struct list_elem *e = list_begin (&all_list);
+       e != list_end (&all_list);
+       e = list_next (e)) {
+    struct thread *t = list_entry (e, struct thread, allelem);
+    if (t->tid == tid) return t;
+  }
+  return NULL;
+}
+
+// struct thread *
+// find_child_thread (tid_t tid)
+// {
+//   struct thread *cur = thread_current ();
+//   for (struct list_elem *e = list_begin (&cur->children);
+//        e != list_end (&cur->children);
+//        e = list_next (e)) {
+//     struct thread *t = list_entry (e, struct thread, elem);
+//     if (t->tid == tid) return t;
+//   }
+//   return NULL;
+// }
+
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
 
@@ -290,8 +315,11 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
-  list_remove (&thread_current()->allelem);
-  thread_current ()->status = THREAD_DYING;
+
+  struct thread *cur = thread_current ();
+  sema_up (&cur->sema);
+  list_remove (&cur->allelem);
+  cur->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
 }
@@ -463,6 +491,12 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  
+  t->return_value = NULL;
+  // list_init(&t->children);
+  list_init(&t->file_descs);
+  sema_init(&t->sema, 0);
+  // list_push_back(thread_current ()->children, &t->elem);
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
