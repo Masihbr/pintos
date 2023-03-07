@@ -1,10 +1,11 @@
-#include "userprog/pagedir.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
+#include "userprog/pagedir.h"
 #include "threads/init.h"
 #include "threads/pte.h"
 #include "threads/palloc.h"
+#include "threads/thread.h"
 
 static uint32_t *active_pd (void);
 static void invalidate_pagedir (uint32_t *);
@@ -260,4 +261,18 @@ invalidate_pagedir (uint32_t *pd)
          "Translation Lookaside Buffers (TLBs)". */
       pagedir_activate (pd);
     }
+}
+
+bool
+ptr_is_valid (void *ptr)
+{
+  return ptr != NULL &&
+         is_user_vaddr(ptr) &&
+         pagedir_get_page (thread_current ()->pagedir, ptr) != NULL;
+}
+
+bool
+block_is_valid (void *ptr, size_t size)
+{
+  return ptr_is_valid (ptr) && ptr_is_valid (ptr + size);
 }

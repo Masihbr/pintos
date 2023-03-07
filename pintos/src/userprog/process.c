@@ -261,7 +261,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
-  process_args* p_args = get_process_args(file_name);
+  process_args *p_args = get_process_args (file_name);
+  if (p_args->argc > 0)
+    strlcpy (t->name, p_args->argv[0], sizeof t->name);
 
   /* Open executable file. */
   file = filesys_open (file_name);
