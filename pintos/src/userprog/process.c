@@ -78,7 +78,10 @@ start_process (void *file_name_)
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success)
-    thread_exit ();
+    {
+      sema_up (&thread_current ()->sema);
+      thread_exit ();
+    }
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -87,6 +90,7 @@ start_process (void *file_name_)
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
+  sema_up (&thread_current ()->sema);
   NOT_REACHED ();
 }
 
@@ -495,13 +499,13 @@ push_args_in_stack (void **esp, process_args* p_args)
   }
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
-  int stack_align = ((size_t)(*esp) - (p_args->argc + 3) * 4 - 1) % 16;
+  int stack_align = ((size_t)(*esp) - p_args->argc * 4 - 3 * 4) % 16;
   *esp -= stack_align;
   memset (*esp, 0, stack_align);
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
-  *esp -= 1;
-  memset (*esp, 0, 1);
+  *esp -= 4;
+  memset (*esp, 0, 4);
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
   for (int i = p_args->argc - 1; i >= 0; i--)
