@@ -276,3 +276,10 @@ block_is_valid (void *ptr, size_t size)
 {
   return ptr_is_valid (ptr) && ptr_is_valid (ptr + size);
 }
+
+bool
+cmd_is_valid (char *cmd)
+{
+  void *cmd_page = pagedir_get_page (thread_current ()->pagedir, cmd);
+  return cmd_page != NULL && block_is_valid (cmd, strlen (cmd_page) + 1);
+}

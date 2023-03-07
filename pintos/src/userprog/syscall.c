@@ -53,6 +53,14 @@ args_are_valid (uint32_t *args)
 }
 
 static void
+exit (struct intr_frame *f, int exit_code)
+{
+  f->eax = exit_code;
+  printf ("%s: exit(%d)\n", &thread_current ()->name, exit_code);
+  thread_exit ();
+}
+
+static void
 syscall_handler (struct intr_frame *f)
 {
   uint32_t *args = ((uint32_t *) f->esp);
@@ -66,14 +74,10 @@ syscall_handler (struct intr_frame *f)
 
   /* printf("System call number: %d\n", args[0]); */
 
-  bool args_valid = args_are_valid(args);
-  if (!args_valid || args[0] == SYS_EXIT)
-    {
-      int exit_code = args_valid ? args[1] : -1;
-      f->eax = exit_code;
-      printf ("%s: exit(%d)\n", &thread_current ()->name, exit_code);
-      thread_exit ();
-    }
+  if (!args_are_valid (args)) exit (f, -1);
+
+  if (args[0] == SYS_EXIT)
+    exit (f, args[1]);
 
   else if (args[0] == SYS_PRACTICE)
     {
@@ -89,7 +93,10 @@ syscall_handler (struct intr_frame *f)
   else if (args[0] == SYS_EXEC)
     {
       char *cmd = args[1];
-      f->eax = process_execute(cmd);
+      if (!cmd_is_valid (cmd))
+        exit (f, -1);
+      else
+        f->eax = process_execute (cmd);
     }
 
   else if (args[0] == SYS_WAIT)
