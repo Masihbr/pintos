@@ -1,4 +1,5 @@
 #include "userprog/syscall.h"
+#include "filesys/filesys.h"
 #include "lib/stdio.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
@@ -17,7 +18,7 @@ syscall_init (void)
 bool
 args_are_valid (uint32_t *args)
 {
-  if (!block_is_valid (args, sizeof(uint32_t)))
+  if (!block_is_valid (args, sizeof (uint32_t)))
     return false;
 
   switch (args[0])
@@ -33,17 +34,17 @@ args_are_valid (uint32_t *args)
     case SYS_FILESIZE:
     case SYS_TELL:
     case SYS_CLOSE:
-      if (!block_is_valid (args + 1, sizeof(uint32_t)))
+      if (!block_is_valid (args + 1, sizeof (uint32_t)))
         return false;
 
     case SYS_CREATE:
     case SYS_SEEK:
-      if (!block_is_valid (args + 2, sizeof(uint32_t)))
+      if (!block_is_valid (args + 2, sizeof (uint32_t)))
         return false;
 
     case SYS_READ:
     case SYS_WRITE:
-      if (!block_is_valid (args + 3, sizeof(uint32_t)))
+      if (!block_is_valid (args + 3, sizeof (uint32_t)))
         return false;
       break;
     default:
@@ -74,7 +75,8 @@ syscall_handler (struct intr_frame *f)
 
   /* printf("System call number: %d\n", args[0]); */
 
-  if (!args_are_valid (args)) exit (f, -1);
+  if (!args_are_valid (args))
+    exit (f, -1);
 
   if (args[0] == SYS_EXIT)
     exit (f, args[1]);
@@ -82,7 +84,7 @@ syscall_handler (struct intr_frame *f)
   else if (args[0] == SYS_PRACTICE)
     {
       int num = args[1];
-      f->eax = num + 1;
+      f->eax = num + 1; /* retrun val */
     }
 
   else if (args[0] == SYS_HALT)
@@ -96,13 +98,13 @@ syscall_handler (struct intr_frame *f)
       if (!cmd_is_valid (cmd))
         exit (f, -1);
       else
-        f->eax = process_execute (cmd);
+        f->eax = process_execute (cmd); /* retrun val */
     }
 
   else if (args[0] == SYS_WAIT)
     {
       int pid = args[1];
-      f->eax = process_wait(pid);
+      f->eax = process_wait (pid); /* retrun val */
     }
 
   else if (args[0] == SYS_WRITE)
@@ -115,5 +117,12 @@ syscall_handler (struct intr_frame *f)
           putbuf (buffer, size);
           f->eax = size; /* retrun val */
         }
+    }
+
+  else if (args[0] == SYS_CREATE)
+    {
+      char *file_name = (char *) args[1];
+      int32_t initial_size = (int32_t) args[2];
+      f->eax = filesys_create (file_name, initial_size); /* retrun val */
     }
 }
