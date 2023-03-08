@@ -1,10 +1,10 @@
 #include "userprog/syscall.h"
 #include "filesys/filesys.h"
-#include "userprog/pagedir.h"
 #include "lib/stdio.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/pagedir.h"
 #include <stdio.h>
 #include <syscall-nr.h>
 
@@ -131,5 +131,17 @@ syscall_handler (struct intr_frame *f)
         }
 
       f->eax = filesys_create (file_name, initial_size); /* retrun val */
+    }
+
+  else if (args[0] == SYS_REMOVE)
+    {
+      char *file_name = (char *) args[1];
+
+      if (!is_ptr_valid (file_name))
+        {
+          exit (f, -1);
+        }
+
+      f->eax = filesys_remove (file_name); /* retrun val */
     }
 }
