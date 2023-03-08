@@ -23,15 +23,14 @@
 #define MAX_ARG_LEN 256
 
 typedef struct process_args
-  {
-    char **argv;
-    int argc;
-  } 
-process_args;
+{
+  char **argv;
+  int argc;
+} process_args;
 
 static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
-process_args* get_process_args (const char *cmd_line);
+process_args *get_process_args (const char *cmd_line);
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
 /* Starts a new thread running a user program loaded from
@@ -74,7 +73,7 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
-  
+
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success)
@@ -163,7 +162,7 @@ process_activate (void)
      interrupts. */
   tss_update ();
 }
-
+
 /* We load ELF binaries.  The following definitions are taken
    from the ELF specification, [ELF1], more-or-less verbatim.  */
 
@@ -227,34 +226,34 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-bool push_args_in_stack (void **esp, process_args* p_args);
-static bool setup_stack (void **esp, process_args* p_args);
+bool push_args_in_stack (void **esp, process_args *p_args);
+static bool setup_stack (void **esp, process_args *p_args);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
                           bool writable);
 
 /**/
-process_args* 
+process_args *
 get_process_args (const char *cmd_line)
 {
-    char *token = malloc (MAX_ARG_LEN * sizeof (char)), *save_ptr;
-    const char delim[2] = " ";
-    process_args *p_args = malloc (sizeof (process_args *));
-    p_args->argc = 0;
-    p_args->argv = malloc (MAX_ARG_LEN * sizeof (char));
+  char *token = malloc (MAX_ARG_LEN * sizeof (char)), *save_ptr;
+  const char delim[2] = " ";
+  process_args *p_args = malloc (sizeof (process_args *));
+  p_args->argc = 0;
+  p_args->argv = malloc (MAX_ARG_LEN * sizeof (char));
 
-    for (token = strtok_r (cmd_line, delim, &save_ptr); token != NULL;
-         token = strtok_r (NULL, delim, &save_ptr))
+  for (token = strtok_r (cmd_line, delim, &save_ptr); token != NULL;
+       token = strtok_r (NULL, delim, &save_ptr))
     {
       size_t tok_len = strlen (token) + 1;
       p_args->argv[p_args->argc] = malloc (tok_len);
       strlcpy (p_args->argv[p_args->argc], token, tok_len);
       p_args->argc++;
     }
-    p_args->argv[p_args->argc] = NULL;
+  p_args->argv[p_args->argc] = NULL;
 
-    return p_args;
+  return p_args;
 }
 
 /* Loads an ELF executable from FILE_NAME into the current thread.
@@ -282,7 +281,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Open executable file. */
   t->executable_file = filesys_open (file_name);
-  file_deny_write(t->executable_file);
+  file_deny_write (t->executable_file);
   if (t->executable_file == NULL)
     {
       printf ("load: %s: open failed\n", file_name);
@@ -374,7 +373,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   /* We arrive here whether the load is successful or not. */
   return success;
 }
-
+
 /* load() helpers. */
 
 static bool install_page (void *upage, void *kpage, bool writable);
@@ -484,22 +483,22 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 }
 
 /**/
-bool 
-push_args_in_stack (void **esp, process_args* p_args)
+bool
+push_args_in_stack (void **esp, process_args *p_args)
 {
   int i;
-  char **argv_ptr = malloc(MAX_ARGC * 4);
+  char **argv_ptr = malloc (MAX_ARGC * 4);
 
   for (i = p_args->argc - 1; i >= 0; i--)
-  {
-    size_t tok_len = strlen (p_args->argv[i]) + 1;
-    *esp -= tok_len;
-    memcpy (*esp, p_args->argv[i], tok_len);
-    argv_ptr[i] = *esp;
-  }
+    {
+      size_t tok_len = strlen (p_args->argv[i]) + 1;
+      *esp -= tok_len;
+      memcpy (*esp, p_args->argv[i], tok_len);
+      argv_ptr[i] = *esp;
+    }
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
-  int stack_align = ((size_t)(*esp) - p_args->argc * 4 - 3 * 4) % 16;
+  int stack_align = ((size_t) (*esp) - p_args->argc * 4 - 3 * 4) % 16;
   *esp -= stack_align;
   memset (*esp, 0, stack_align);
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
@@ -509,23 +508,23 @@ push_args_in_stack (void **esp, process_args* p_args)
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
   for (int i = p_args->argc - 1; i >= 0; i--)
-  {
-    *esp -= sizeof(char*);
-    memcpy (*esp, &argv_ptr[i], sizeof(char*));
-  }
+    {
+      *esp -= sizeof (char *);
+      memcpy (*esp, &argv_ptr[i], sizeof (char *));
+    }
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
   char *argv_addr = *esp;
   *esp -= 4;
-  memcpy(*esp, &argv_addr, 4);
+  memcpy (*esp, &argv_addr, 4);
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
-  *esp -= sizeof(int);
-  memcpy(*esp, &p_args->argc, sizeof(int));
+  *esp -= sizeof (int);
+  memcpy (*esp, &p_args->argc, sizeof (int));
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
-  
-  *esp -= sizeof(void*);
-  memset (*esp, 0, sizeof(void*));
+
+  *esp -= sizeof (void *);
+  memset (*esp, 0, sizeof (void *));
   // printf("final: \n");
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
   // hex_dump(0xbfffff00, 0xbfffff00, 1000, true);
@@ -536,7 +535,7 @@ push_args_in_stack (void **esp, process_args* p_args)
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp, process_args* p_args)
+setup_stack (void **esp, process_args *p_args)
 {
   uint8_t *kpage;
   bool success = false;
@@ -546,10 +545,10 @@ setup_stack (void **esp, process_args* p_args)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-      {
-        *esp = PHYS_BASE;
-        push_args_in_stack(esp, p_args);
-      }
+        {
+          *esp = PHYS_BASE;
+          push_args_in_stack (esp, p_args);
+        }
       else
         palloc_free_page (kpage);
     }
