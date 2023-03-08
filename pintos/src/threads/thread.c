@@ -216,6 +216,20 @@ find_thread (tid_t tid)
   return NULL;
 }
 
+struct file_t *
+find_file (int fd)
+{
+  struct thread *cur = thread_current ();
+  for (struct list_elem *e = list_begin (&cur->file_descs);
+       e != list_end (&cur->file_descs); e = list_next (e))
+  {
+    struct file_t *f = list_entry (e, struct file_t, elem);
+    if (f->fd == fd)
+      return f;
+  }
+  return NULL;
+}
+
 // struct thread *
 // find_child_thread (tid_t tid)
 // {
@@ -317,7 +331,6 @@ thread_exit (void)
   intr_disable ();
 
   struct thread *cur = thread_current ();
-  sema_up (&cur->sema);
   list_remove (&cur->allelem);
   cur->status = THREAD_DYING;
   schedule ();
@@ -496,6 +509,7 @@ init_thread (struct thread *t, const char *name, int priority)
   // list_init(&t->children);
   list_init(&t->file_descs);
   sema_init(&t->sema, 0);
+  t->next_fd = 2;
   // list_push_back(thread_current ()->children, &t->elem);
 
   old_level = intr_disable ();

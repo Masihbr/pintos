@@ -82,6 +82,13 @@ typedef int tid_t;
    only because they are mutually exclusive: only a thread in the
    ready state is on the run queue, whereas only a thread in the
    blocked state is on a semaphore wait list. */
+
+struct file_t
+  {
+    int fd;                             /* File Descriptor id (returned from SYS_OPEN). */
+    struct file *f;                     /* The actual file. */
+    struct list_elem elem;              /* List element. */
+  };
 struct thread
   {
     /* Owned by thread.c. */
@@ -95,12 +102,12 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-#ifdef USERPROG
-   //  struct list children;               /* List of this thread's children. */
     int return_value;                   /* The return value of this thread. */
     struct semaphore sema;              /* Semaphore for exec and wait. */
     struct list file_descs;             /* The list of this thread's File Descriptors. */
+    int next_fd;                        /* The next fd */
     struct file *executable_file;       /* The executable file. */
+#ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
@@ -123,6 +130,7 @@ void thread_print_stats (void);
 typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
 struct thread *find_thread (tid_t tid);
+struct file_t *find_file (int fd);
 // struct thread *find_child_thread (tid_t tid);
 
 void thread_block (void);

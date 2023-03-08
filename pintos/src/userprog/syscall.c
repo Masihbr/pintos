@@ -57,8 +57,10 @@ args_are_valid (uint32_t *args)
 static void
 exit (struct intr_frame *f, int exit_code)
 {
+  struct thread *cur = thread_current ();
   f->eax = exit_code;
-  printf ("%s: exit(%d)\n", &thread_current ()->name, exit_code);
+  cur->return_value = exit_code;
+  printf ("%s: exit(%d)\n", cur->name, cur->return_value);
   thread_exit ();
 }
 
@@ -125,23 +127,64 @@ syscall_handler (struct intr_frame *f)
       char *file_name = (char *) args[1];
       int32_t initial_size = (int32_t) args[2];
 
-      if (!is_ptr_valid (file_name))
-        {
-          exit (f, -1);
-        }
-
-      f->eax = filesys_create (file_name, initial_size); /* retrun val */
+      if (!is_block_valid (file_name, strlen (file_name) + 1))
+        exit (f, -1);
+      else
+        f->eax = filesys_create (file_name, initial_size); /* retrun val */
     }
 
   else if (args[0] == SYS_REMOVE)
     {
       char *file_name = (char *) args[1];
 
-      if (!is_ptr_valid (file_name))
+      if (!is_block_valid (file_name, strlen (file_name) + 1))
+        exit (f, -1);
+      else
+        f->eax = filesys_remove (file_name); /* retrun val */
+    }
+  else if (args[0] == SYS_OPEN)
+    {
+      if (!is_block_valid (args[1], sizeof (args[1])))
+        exit (f, -1);
+      else
         {
-          exit (f, -1);
-        }
+          char *file_name = (char *) args[1];
+          size_t len = strlen (file_name) + 1;
 
-      f->eax = filesys_remove (file_name); /* retrun val */
+          if (len == 1)
+            f->eax = -1;
+          else if (!is_block_valid (file_name, len))
+            exit (f, -1);
+          else
+            {
+              struct file *file = filesys_open (file_name); /* retrun val */
+              if (file == NULL)
+                f->eax = -1;
+              else
+                {
+                  int fd = thread_current ()->next_fd++;
+
+                  struct file_t *ft = malloc (sizeof (struct file_t *));
+                  ft->fd = fd;
+                  ft->f = file;
+
+                  list_push_back (&thread_current ()->file_descs, &ft->elem);
+
+                  f->eax = fd;
+                }
+            }
+        }
+    }
+  else if (args[0] == SYS_CLOSE)
+    {
+      int fd = args[1];
+      struct file_t *file = find_file (fd);
+      if (file == NULL)
+        exit (f, -1);
+      else
+        {
+          f->eax = file_close (file->f); /* retrun val */
+          list_remove(&file->elem);
+        }
     }
 }
