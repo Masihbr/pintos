@@ -60,7 +60,6 @@ exit (struct intr_frame *f, int exit_code)
   struct thread *cur = thread_current ();
   f->eax = exit_code;
   cur->return_value = exit_code;
-  printf ("%s: exit(%d)\n", cur->name, cur->return_value);
   thread_exit ();
 }
 

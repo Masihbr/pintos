@@ -78,6 +78,7 @@ start_process (void *file_name_)
   palloc_free_page (file_name);
   if (!success)
     {
+      thread_current ()->return_value = -1;
       sema_up (&thread_current ()->sema);
       thread_exit ();
     }

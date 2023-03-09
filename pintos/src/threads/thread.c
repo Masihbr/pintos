@@ -332,6 +332,7 @@ thread_exit (void)
   intr_disable ();
 
   struct thread *cur = thread_current ();
+  printf ("%s: exit(%d)\n", cur->name, cur->return_value);
   sema_up (&cur->sema);
   list_remove (&cur->allelem);
   cur->status = THREAD_DYING;
