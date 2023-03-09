@@ -157,7 +157,8 @@ process_exit (void)
       pagedir_destroy (pd);
     }
   sema_up (&temporary);
-  file_allow_write (cur->executable_file);
+  if (cur->executable_file != NULL)
+    file_allow_write (cur->executable_file);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -294,12 +295,13 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Open executable file. */
   t->executable_file = filesys_open (file_name);
-  file_deny_write (t->executable_file);
   if (t->executable_file == NULL)
     {
       printf ("load: %s: open failed\n", file_name);
       goto done;
     }
+  else
+    file_deny_write (t->executable_file);
 
   /* Read and verify executable header. */
   if (file_read (t->executable_file, &ehdr, sizeof ehdr) != sizeof ehdr
