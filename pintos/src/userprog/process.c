@@ -125,6 +125,18 @@ void
 process_exit (void)
 {
   struct thread *cur = thread_current ();
+
+  /* Close all files */
+  // for (struct list_elem *e = list_begin (&cur->file_descs);;)
+  //   {
+  //     struct file_t *ft = list_entry (e, struct file_t, elem);
+  //     printf ("closing %d \n", ft->fd);
+  //     file_close (ft->f);
+  //     e = list_pop_front (&cur->file_descs);
+  //     if (e == list_end (&cur->file_descs))
+  //       break;
+  //   }
+
   uint32_t *pd;
 
   /* Destroy the current process's page directory and switch back

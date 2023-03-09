@@ -331,6 +331,7 @@ thread_exit (void)
   intr_disable ();
 
   struct thread *cur = thread_current ();
+  sema_up(&cur->sema);
   list_remove (&cur->allelem);
   cur->status = THREAD_DYING;
   schedule ();

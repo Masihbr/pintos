@@ -76,7 +76,7 @@ syscall_handler (struct intr_frame *f)
    * include it in your final submission.
    */
 
-  /* printf("System call number: %d\n", args[0]); */
+  // printf("System call number: %d\n", args[0]);
 
   if (!args_are_valid (args))
     exit (f, -1);
@@ -87,7 +87,7 @@ syscall_handler (struct intr_frame *f)
   else if (args[0] == SYS_PRACTICE)
     {
       int num = args[1];
-      f->eax = num + 1; /* retrun val */
+      f->eax = num + 1;
     }
 
   else if (args[0] == SYS_HALT)
@@ -101,13 +101,13 @@ syscall_handler (struct intr_frame *f)
       if (!is_cmd_valid (cmd))
         exit (f, -1);
       else
-        f->eax = process_execute (cmd); /* retrun val */
+        f->eax = process_execute (cmd);
     }
 
   else if (args[0] == SYS_WAIT)
     {
       int pid = args[1];
-      f->eax = process_wait (pid); /* retrun val */
+      f->eax = process_wait (pid);
     }
 
   else if (args[0] == SYS_WRITE)
@@ -116,9 +116,36 @@ syscall_handler (struct intr_frame *f)
       char *buffer = (char *) args[2];
       unsigned size = (unsigned) args[3];
       if (fd == STDOUT_FILENO)
+        putbuf (buffer, (f->eax = size));
+      else if (fd == STDIN_FILENO)
+        exit (f, -1);
+      else
         {
-          putbuf (buffer, size);
-          f->eax = size; /* retrun val */
+          struct file_t *file = find_file (fd);
+          f->eax = file ? file_write (file->f, buffer, size) : -1;
+        }
+    }
+
+  else if (args[0] == SYS_READ)
+    {
+      int fd = (int) args[1];
+      char *buffer = (char *) args[2];
+      unsigned size = (unsigned) args[3];
+      if (fd == STDIN_FILENO)
+        {
+          for (f->eax = 0; f->eax < size; f->eax++)
+            {
+              *(buffer + f->eax) = input_getc ();
+              if (*(buffer + f->eax) == '\n')
+                break;
+            }
+        }
+      else if (fd == STDOUT_FILENO)
+        exit (f, -1);
+      else
+        {
+          struct file_t *file = find_file (fd);
+          f->eax = file ? file_read (file->f, buffer, size) : -1;
         }
     }
 
@@ -130,7 +157,7 @@ syscall_handler (struct intr_frame *f)
       if (!is_block_valid (file_name, strlen (file_name) + 1))
         exit (f, -1);
       else
-        f->eax = filesys_create (file_name, initial_size); /* retrun val */
+        f->eax = filesys_create (file_name, initial_size);
     }
 
   else if (args[0] == SYS_REMOVE)
@@ -140,8 +167,9 @@ syscall_handler (struct intr_frame *f)
       if (!is_block_valid (file_name, strlen (file_name) + 1))
         exit (f, -1);
       else
-        f->eax = filesys_remove (file_name); /* retrun val */
+        f->eax = filesys_remove (file_name);
     }
+
   else if (args[0] == SYS_OPEN)
     {
       if (!is_block_valid (args[1], sizeof (args[1])))
@@ -157,7 +185,7 @@ syscall_handler (struct intr_frame *f)
             exit (f, -1);
           else
             {
-              struct file *file = filesys_open (file_name); /* retrun val */
+              struct file *file = filesys_open (file_name);
               if (file == NULL)
                 f->eax = -1;
               else
@@ -183,8 +211,34 @@ syscall_handler (struct intr_frame *f)
         exit (f, -1);
       else
         {
-          f->eax = file_close (file->f); /* retrun val */
+          f->eax = file_close (file->f);
           list_remove(&file->elem);
         }
     }
+
+  else if (args[0] == SYS_FILESIZE)
+    {
+      int fd = args[1];
+      struct file_t *file = find_file (fd);
+      f->eax = file ? file_length (file->f) : -1;
+    }
+
+  else if (args[0] == SYS_SEEK)
+    {
+      int fd = args[1];
+      off_t pos = args[2];
+      struct file_t *file = find_file (fd);
+      if (file != NULL)
+        file_seek (file->f, pos);
+    }
+
+  else if (args[0] == SYS_TELL)
+    {
+      int fd = args[1];
+      struct file_t *file = find_file (fd);
+      f->eax = file ? file_tell (file->f) : -1;
+    }
+  else {
+    printf("UNIMPLEMENTED SYSCALL: %d\n", args[0]);
+  }
 }
