@@ -115,10 +115,10 @@ syscall_handler (struct intr_frame *f)
       int fd = (int) args[1];
       char *buffer = (char *) args[2];
       unsigned size = (unsigned) args[3];
-      if (fd == STDOUT_FILENO)
-        putbuf (buffer, (f->eax = size));
-      else if (fd == STDIN_FILENO || !is_block_valid (buffer, size))
+      if (fd == STDIN_FILENO || !is_block_valid (buffer, size))
         exit (f, -1);
+      else if (fd == STDOUT_FILENO)
+        putbuf (buffer, (f->eax = size));
       else
         {
           struct file_t *file = find_file (fd);
@@ -131,7 +131,10 @@ syscall_handler (struct intr_frame *f)
       int fd = (int) args[1];
       char *buffer = (char *) args[2];
       unsigned size = (unsigned) args[3];
-      if (fd == STDIN_FILENO)
+      
+      if (fd == STDOUT_FILENO || !is_block_valid (buffer, size))
+        exit (f, -1);
+      else if (fd == STDIN_FILENO)
         {
           for (f->eax = 0; f->eax < size; f->eax++)
             {
@@ -140,8 +143,6 @@ syscall_handler (struct intr_frame *f)
                 break;
             }
         }
-      else if (fd == STDOUT_FILENO || !is_block_valid (buffer, size))
-        exit (f, -1);
       else
         {
           struct file_t *file = find_file (fd);
