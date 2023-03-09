@@ -142,6 +142,7 @@ syscall_handler (struct intr_frame *f)
       else
         f->eax = filesys_remove (file_name); /* retrun val */
     }
+
   else if (args[0] == SYS_OPEN)
     {
       if (!is_block_valid (args[1], sizeof (args[1])))
@@ -175,6 +176,7 @@ syscall_handler (struct intr_frame *f)
             }
         }
     }
+
   else if (args[0] == SYS_CLOSE)
     {
       int fd = args[1];
@@ -184,7 +186,7 @@ syscall_handler (struct intr_frame *f)
       else
         {
           f->eax = file_close (file->f); /* retrun val */
-          list_remove(&file->elem);
+          list_remove (&file->elem);
         }
     }
 }

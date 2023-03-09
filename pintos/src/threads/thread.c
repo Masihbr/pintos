@@ -163,8 +163,8 @@ thread_print_stats (void)
    PRIORITY, but no actual priority scheduling is implemented.
    Priority scheduling is the goal of Problem 1-3. */
 tid_t
-thread_create (const char *name, int priority,
-               thread_func *function, void *aux)
+thread_create (const char *name, int priority, thread_func *function,
+               void *aux)
 {
   struct thread *t;
   struct kernel_thread_frame *kf;
@@ -207,12 +207,13 @@ thread_create (const char *name, int priority,
 struct thread *
 find_thread (tid_t tid)
 {
-  for (struct list_elem *e = list_begin (&all_list);
-       e != list_end (&all_list);
-       e = list_next (e)) {
-    struct thread *t = list_entry (e, struct thread, allelem);
-    if (t->tid == tid) return t;
-  }
+  for (struct list_elem *e = list_begin (&all_list); e != list_end (&all_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, allelem);
+      if (t->tid == tid)
+        return t;
+    }
   return NULL;
 }
 
@@ -222,11 +223,11 @@ find_file (int fd)
   struct thread *cur = thread_current ();
   for (struct list_elem *e = list_begin (&cur->file_descs);
        e != list_end (&cur->file_descs); e = list_next (e))
-  {
-    struct file_t *f = list_entry (e, struct file_t, elem);
-    if (f->fd == fd)
-      return f;
-  }
+    {
+      struct file_t *f = list_entry (e, struct file_t, elem);
+      if (f->fd == fd)
+        return f;
+    }
   return NULL;
 }
 
@@ -331,6 +332,7 @@ thread_exit (void)
   intr_disable ();
 
   struct thread *cur = thread_current ();
+  sema_up (&cur->sema);
   list_remove (&cur->allelem);
   cur->status = THREAD_DYING;
   schedule ();
@@ -416,7 +418,7 @@ thread_get_recent_cpu (void)
   /* Not yet implemented. */
   return 0;
 }
-
+
 /* Idle thread.  Executes when no other thread is ready to run.
 
    The idle thread is initially put on the ready list by
@@ -465,7 +467,7 @@ kernel_thread (thread_func *function, void *aux)
   function (aux);       /* Execute the thread function. */
   thread_exit ();       /* If function() returns, kill the thread. */
 }
-
+
 /* Returns the running thread. */
 struct thread *
 running_thread (void)
@@ -476,7 +478,7 @@ running_thread (void)
      down to the start of a page.  Because `struct thread' is
      always at the beginning of a page and the stack pointer is
      somewhere in the middle, this locates the curent thread. */
-  asm ("mov %%esp, %0" : "=g" (esp));
+  asm ("mov %%esp, %0" : "=g"(esp));
   return pg_round_down (esp);
 }
 
@@ -504,11 +506,11 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
-  
+
   t->return_value = NULL;
   // list_init(&t->children);
-  list_init(&t->file_descs);
-  sema_init(&t->sema, 0);
+  list_init (&t->file_descs);
+  sema_init (&t->sema, 0);
   t->next_fd = 2;
   // list_push_back(thread_current ()->children, &t->elem);
 
@@ -626,7 +628,7 @@ allocate_tid (void)
 
   return tid;
 }
-
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
