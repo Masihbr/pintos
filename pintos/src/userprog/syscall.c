@@ -203,6 +203,7 @@ syscall_handler (struct intr_frame *f)
             }
         }
     }
+
   else if (args[0] == SYS_CLOSE)
     {
       int fd = args[1];
