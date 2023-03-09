@@ -154,34 +154,30 @@ syscall_handler (struct intr_frame *f)
       char *file_name = (char *) args[1];
       int32_t initial_size = (int32_t) args[2];
 
-      if (!is_block_valid (file_name, strlen (file_name) + 1))
+      if (!is_ptr_valid(file_name) || !is_block_valid (file_name, strlen (file_name) + 1))
         exit (f, -1);
       else
-        f->eax = filesys_create (file_name, initial_size);
+        f->eax = filesys_create (file_name, initial_size); /* retrun val */
     }
 
   else if (args[0] == SYS_REMOVE)
     {
       char *file_name = (char *) args[1];
 
-      if (!is_block_valid (file_name, strlen (file_name) + 1))
+      if (!is_ptr_valid(file_name) || !is_block_valid (file_name, strlen (file_name) + 1))
         exit (f, -1);
       else
-        f->eax = filesys_remove (file_name);
+        f->eax = filesys_remove (file_name); /* retrun val */
     }
 
   else if (args[0] == SYS_OPEN)
     {
-      if (!is_block_valid (args[1], sizeof (args[1])))
+      if (!is_ptr_valid(args[1]) || !is_block_valid (args[1], sizeof (args[1])))
         exit (f, -1);
       else
         {
           char *file_name = (char *) args[1];
-          size_t len = strlen (file_name) + 1;
-
-          if (len == 1)
-            f->eax = -1;
-          else if (!is_block_valid (file_name, len))
+          if (!is_ptr_valid(file_name) || !is_block_valid (file_name, strlen (file_name) + 1))
             exit (f, -1);
           else
             {
