@@ -117,7 +117,7 @@ syscall_handler (struct intr_frame *f)
       unsigned size = (unsigned) args[3];
       if (fd == STDOUT_FILENO)
         putbuf (buffer, (f->eax = size));
-      else if (fd == STDIN_FILENO)
+      else if (fd == STDIN_FILENO || !is_block_valid (buffer, size))
         exit (f, -1);
       else
         {
@@ -140,7 +140,7 @@ syscall_handler (struct intr_frame *f)
                 break;
             }
         }
-      else if (fd == STDOUT_FILENO)
+      else if (fd == STDOUT_FILENO || !is_block_valid (buffer, size))
         exit (f, -1);
       else
         {
