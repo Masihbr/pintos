@@ -171,30 +171,25 @@ syscall_handler (struct intr_frame *f)
 
   else if (args[0] == SYS_OPEN)
     {
-      if (!is_ptr_valid(args[1]) || !is_block_valid (args[1], sizeof (args[1])))
+      char *file_name = (char *) args[1];
+      if (!is_ptr_valid(file_name) || !is_block_valid (file_name, strlen (file_name) + 1))
         exit (f, -1);
       else
         {
-          char *file_name = (char *) args[1];
-          if (!is_ptr_valid(file_name) || !is_block_valid (file_name, strlen (file_name) + 1))
-            exit (f, -1);
+          struct file *file = filesys_open (file_name);
+          if (file == NULL)
+            f->eax = -1;
           else
             {
-              struct file *file = filesys_open (file_name);
-              if (file == NULL)
-                f->eax = -1;
-              else
-                {
-                  int fd = thread_current ()->next_fd++;
+              int fd = thread_current ()->next_fd++;
 
-                  struct file_t *ft = malloc (sizeof (struct file_t *));
-                  ft->fd = fd;
-                  ft->f = file;
+              struct file_t *ft = malloc (sizeof (struct file_t *));
+              ft->fd = fd;
+              ft->f = file;
 
-                  list_push_back (&thread_current ()->file_descs, &ft->elem);
+              list_push_back (&thread_current ()->file_descs, &ft->elem);
 
-                  f->eax = fd;
-                }
+              f->eax = fd;
             }
         }
     }
