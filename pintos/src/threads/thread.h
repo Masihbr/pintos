@@ -89,6 +89,16 @@ struct file_t
     struct file *f;                     /* The actual file. */
     struct list_elem elem;              /* List element. */
   };
+struct status_t
+  {
+    tid_t tid;                          /* Thread identifier. */
+
+    int return_value;                   /* The return value of this thread. */
+    bool waited;                        /* Wether the thread is being waited on. */
+    bool finished;                      /* Wether the thread is finished. */
+    
+    struct list_elem elem;              /* List element. */
+  };
 struct thread
   {
     /* Owned by thread.c. */
@@ -102,7 +112,6 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-    int return_value;                   /* The return value of this thread. */
     struct semaphore sema;              /* Semaphore for exec and wait. */
     struct list file_descs;             /* The list of this thread's File Descriptors. */
     int next_fd;                        /* The next fd */
@@ -131,12 +140,13 @@ typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
 struct thread *find_thread (tid_t tid);
 struct file_t *find_file (int fd);
-// struct thread *find_child_thread (tid_t tid);
+struct status_t *find_status (tid_t tid);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
 
 struct thread *thread_current (void);
+struct status_t *status_current (void);
 tid_t thread_tid (void);
 const char *thread_name (void);
 

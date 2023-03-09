@@ -57,9 +57,8 @@ args_are_valid (uint32_t *args)
 static void
 exit (struct intr_frame *f, int exit_code)
 {
-  struct thread *cur = thread_current ();
   f->eax = exit_code;
-  cur->return_value = exit_code;
+  status_current ()->return_value = exit_code;
   thread_exit ();
 }
 

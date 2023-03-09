@@ -28,6 +28,9 @@ static struct list ready_list;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
+/* List of all thread status's. */
+static struct list status_list;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -65,6 +68,7 @@ static void idle (void *aux UNUSED);
 static struct thread *running_thread (void);
 static struct thread *next_thread_to_run (void);
 static void init_thread (struct thread *, const char *name, int priority);
+struct status_t *init_status (tid_t tid);
 static bool is_thread (struct thread *) UNUSED;
 static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
@@ -92,6 +96,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init (&status_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -182,6 +187,7 @@ thread_create (const char *name, int priority, thread_func *function,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  init_status (tid);
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -231,18 +237,18 @@ find_file (int fd)
   return NULL;
 }
 
-// struct thread *
-// find_child_thread (tid_t tid)
-// {
-//   struct thread *cur = thread_current ();
-//   for (struct list_elem *e = list_begin (&cur->children);
-//        e != list_end (&cur->children);
-//        e = list_next (e)) {
-//     struct thread *t = list_entry (e, struct thread, elem);
-//     if (t->tid == tid) return t;
-//   }
-//   return NULL;
-// }
+struct status_t *
+find_status (tid_t tid)
+{
+  for (struct list_elem *e = list_begin (&status_list);
+       e != list_end (&status_list); e = list_next (e))
+    {
+      struct status_t *s = list_entry (e, struct status_t, elem);
+      if (s->tid == tid)
+        return s;
+    }
+  return NULL;
+}
 
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
@@ -308,6 +314,13 @@ thread_current (void)
   return t;
 }
 
+/* Returns the running thread's status. */
+struct status_t *
+status_current (void)
+{
+  return find_status (thread_tid ());
+}
+
 /* Returns the running thread's tid. */
 tid_t
 thread_tid (void)
@@ -332,8 +345,10 @@ thread_exit (void)
   intr_disable ();
 
   struct thread *cur = thread_current ();
-  printf ("%s: exit(%d)\n", cur->name, cur->return_value);
+  struct status_t *status = status_current ();
+  printf ("%s: exit(%d)\n", cur->name, status->return_value);
   sema_up (&cur->sema);
+  status->finished = true;
   list_remove (&cur->allelem);
   cur->status = THREAD_DYING;
   schedule ();
@@ -508,7 +523,6 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
-  t->return_value = NULL;
   // list_init(&t->children);
   list_init (&t->file_descs);
   sema_init (&t->sema, 0);
@@ -518,6 +532,23 @@ init_thread (struct thread *t, const char *name, int priority)
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
+}
+
+/* Initializes thread status and addes it to status_list.
+  it T is NULL, initial_thread is used. */
+struct status_t *
+init_status (tid_t tid)
+{
+  struct status_t *status = malloc (sizeof (struct status_t *));
+  status->tid = tid;
+  status->return_value = NULL;
+  status->finished = false;
+  status->waited = false;
+  (&status->elem)->next = malloc (sizeof ((&status->elem)->next));
+  (&status->elem)->prev = malloc (sizeof ((&status->elem)->prev));
+
+  list_push_back (&status_list, &status->elem);
+  return status;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

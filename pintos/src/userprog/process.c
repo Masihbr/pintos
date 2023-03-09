@@ -78,7 +78,7 @@ start_process (void *file_name_)
   palloc_free_page (file_name);
   if (!success)
     {
-      thread_current ()->return_value = -1;
+      status_current ()->return_value = -1;
       sema_up (&thread_current ()->sema);
       thread_exit ();
     }
@@ -111,11 +111,15 @@ process_wait (tid_t child_tid)
 
   // struct thread *child = find_child_thread (child_tid);
   struct thread *child = find_thread (child_tid);
+  struct status_t *child_status = find_status (child_tid);
+  if (child_status == NULL || child_status->waited)
+    return -1;
   if (child != NULL)
     {
-      if (child->status != THREAD_DYING)
+      child_status->waited = true;
+      if (!child_status->finished)
         sema_down (&child->sema);
-      return child->return_value;
+      return child_status->return_value;
     }
   else
     return -1;
