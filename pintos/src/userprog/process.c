@@ -8,6 +8,7 @@
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
 #include "userprog/tss.h"
+#include "threads/malloc.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
@@ -260,14 +261,14 @@ get_process_args (const char *cmd_line)
 {
   char *token, *save_ptr;
   const char delim[2] = " ";
-  process_args *p_args = malloc (sizeof (process_args));
+  process_args *p_args = (process_args *) malloc (sizeof (process_args));
   p_args->argc = 0;
-  p_args->argv = malloc (MAX_ARGC * sizeof (char *));
+  p_args->argv = (char**) malloc (MAX_ARGC * sizeof (char *));
   token = strtok_r (cmd_line, delim, &save_ptr);
   while (token != NULL)
     {
       size_t tok_len = strlen (token) + 1;
-      p_args->argv[p_args->argc] = malloc (tok_len * sizeof (char));
+      p_args->argv[p_args->argc] = (char *) malloc (tok_len * sizeof (char));
       strlcpy (p_args->argv[p_args->argc], token, tok_len);
       p_args->argc++;
       token = strtok_r (NULL, delim, &save_ptr);
@@ -531,7 +532,9 @@ push_args_in_stack (void **esp, process_args *p_args)
       *esp -= tok_len;
       memcpy (*esp, p_args->argv[i], tok_len);
       argv_ptr[i] = *esp;
+      free (p_args->argv[i]);
     }
+  // free (p_args->argv);
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
   /* stack-align */
