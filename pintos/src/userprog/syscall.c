@@ -1,4 +1,5 @@
 #include "userprog/syscall.h"
+#include "userprog/process.h"
 #include "filesys/filesys.h"
 #include "lib/stdio.h"
 #include "threads/interrupt.h"

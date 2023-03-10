@@ -117,6 +117,8 @@ process_wait (tid_t child_tid)
   struct status_t *child_status = find_status (child_tid);
   if (child_status == NULL || child_status->waited)
     return -1;
+  if (child_status->finished)
+    return child_status->return_value;
   if (child != NULL)
     {
       child_status->waited = true;
