@@ -13,6 +13,7 @@ static void syscall_handler (struct intr_frame *);
 void
 syscall_init (void)
 {
+  lock_init(&fs_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -120,7 +121,9 @@ syscall_handler (struct intr_frame *f)
       else
         {
           struct file_t *file = find_file (fd);
+          lock_acquire (&fs_lock);
           f->eax = file ? file_write (file->f, buffer, size) : -1;
+          lock_release (&fs_lock);
         }
     }
 
@@ -144,7 +147,9 @@ syscall_handler (struct intr_frame *f)
       else
         {
           struct file_t *file = find_file (fd);
+          lock_acquire (&fs_lock);
           f->eax = file ? file_read (file->f, buffer, size) : -1;
+          lock_release (&fs_lock);
         }
     }
 
@@ -156,7 +161,11 @@ syscall_handler (struct intr_frame *f)
       if (!is_ptr_valid(file_name) || !is_block_valid (file_name, strlen (file_name) + 1))
         exit (f, -1);
       else
-        f->eax = filesys_create (file_name, initial_size); /* retrun val */
+        {
+          lock_acquire (&fs_lock);
+          f->eax = filesys_create (file_name, initial_size); /* retrun val */
+          lock_release (&fs_lock);
+        }
     }
 
   else if (args[0] == SYS_REMOVE)
@@ -166,7 +175,11 @@ syscall_handler (struct intr_frame *f)
       if (!is_ptr_valid(file_name) || !is_block_valid (file_name, strlen (file_name) + 1))
         exit (f, -1);
       else
-        f->eax = filesys_remove (file_name); /* retrun val */
+        {
+          lock_acquire (&fs_lock);
+          f->eax = filesys_remove (file_name); /* retrun val */
+          lock_release (&fs_lock);
+        }
     }
 
   else if (args[0] == SYS_OPEN)
@@ -176,6 +189,7 @@ syscall_handler (struct intr_frame *f)
         exit (f, -1);
       else
         {
+          lock_acquire (&fs_lock);
           struct file *file = filesys_open (file_name);
           if (file == NULL)
             f->eax = -1;
@@ -191,6 +205,7 @@ syscall_handler (struct intr_frame *f)
 
               f->eax = fd;
             }
+          lock_release (&fs_lock);
         }
     }
 
@@ -202,8 +217,10 @@ syscall_handler (struct intr_frame *f)
         exit (f, -1);
       else
         {
+          lock_acquire (&fs_lock);
           f->eax = file_close (file->f);
-          list_remove(&file->elem);
+          lock_release (&fs_lock);
+          list_remove (&file->elem);
         }
     }
 
@@ -211,7 +228,9 @@ syscall_handler (struct intr_frame *f)
     {
       int fd = args[1];
       struct file_t *file = find_file (fd);
+      lock_acquire (&fs_lock);
       f->eax = file ? file_length (file->f) : -1;
+      lock_release (&fs_lock);
     }
 
   else if (args[0] == SYS_SEEK)
@@ -220,14 +239,20 @@ syscall_handler (struct intr_frame *f)
       off_t pos = args[2];
       struct file_t *file = find_file (fd);
       if (file != NULL)
-        file_seek (file->f, pos);
+        {
+          lock_acquire (&fs_lock);
+          file_seek (file->f, pos);
+          lock_release (&fs_lock);
+        }
     }
 
   else if (args[0] == SYS_TELL)
     {
       int fd = args[1];
       struct file_t *file = find_file (fd);
+      lock_acquire (&fs_lock);
       f->eax = file ? file_tell (file->f) : -1;
+      lock_release (&fs_lock);
     }
   else {
     printf("UNIMPLEMENTED SYSCALL: %d\n", args[0]);
