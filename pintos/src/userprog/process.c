@@ -259,6 +259,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 process_args *
 get_process_args (const char *cmd_line)
 {
+  // printf("get_process_args(%s)\n", cmd_line);
   char *token, *save_ptr;
   const char delim[2] = " ";
   process_args *p_args = (process_args *) malloc (sizeof (process_args));

@@ -92,10 +92,12 @@ struct file_t
 struct status_t
   {
     tid_t tid;                          /* Thread identifier. */
+    tid_t ptid;                         /* Parent's Thread identifier. */
 
     int return_value;                   /* The return value of this thread. */
     bool waited;                        /* Wether the thread is being waited on. */
     bool finished;                      /* Wether the thread is finished. */
+    bool parent_finished;               /* Wether its parent thread is finished. */
     
     struct list_elem elem;              /* List element. */
   };
