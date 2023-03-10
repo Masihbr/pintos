@@ -136,15 +136,14 @@ process_exit (void)
   struct thread *cur = thread_current ();
 
   /* Close all files */
-  // for (struct list_elem *e = list_begin (&cur->file_descs);;)
-  //   {
-  //     struct file_t *ft = list_entry (e, struct file_t, elem);
-  //     printf ("closing %d \n", ft->fd);
-  //     file_close (ft->f);
-  //     e = list_pop_front (&cur->file_descs);
-  //     if (e == list_end (&cur->file_descs))
-  //       break;
-  //   }
+  struct list *files;
+  while (!list_empty ((files = &cur->file_descs)))
+    {
+      struct list_elem *e = list_front (files);
+      struct file_t *ft = list_entry (e, struct file_t, elem);
+      e = list_pop_front (files);
+      file_close (ft->f);
+    }
 
   uint32_t *pd;
 
