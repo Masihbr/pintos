@@ -274,6 +274,8 @@ get_process_args (const char *cmd_line)
       token = strtok_r (NULL, delim, &save_ptr);
     }
   p_args->argv[p_args->argc] = NULL;
+  p_args->argv
+      = realloc (p_args->argv, (p_args->argc + 1) * sizeof (char *));
   return p_args;
 }
 
