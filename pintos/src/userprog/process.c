@@ -31,6 +31,7 @@ typedef struct process_args
 static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
 process_args *get_process_args (const char *cmd_line);
+void free_process_args (process_args *p_args);
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
 /* Starts a new thread running a user program loaded from
@@ -258,22 +259,21 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 process_args *
 get_process_args (const char *cmd_line)
 {
-  char *token = malloc (MAX_ARG_LEN * sizeof (char)), *save_ptr;
+  char *token, *save_ptr;
   const char delim[2] = " ";
-  process_args *p_args = malloc (sizeof (process_args *));
+  process_args *p_args = malloc (sizeof (process_args));
   p_args->argc = 0;
-  p_args->argv = malloc (MAX_ARG_LEN * sizeof (char));
-
-  for (token = strtok_r (cmd_line, delim, &save_ptr); token != NULL;
-       token = strtok_r (NULL, delim, &save_ptr))
+  p_args->argv = malloc (MAX_ARGC * sizeof (char *));
+  token = strtok_r (cmd_line, delim, &save_ptr);
+  while (token != NULL)
     {
       size_t tok_len = strlen (token) + 1;
-      p_args->argv[p_args->argc] = malloc (tok_len);
+      p_args->argv[p_args->argc] = malloc (tok_len * sizeof (char));
       strlcpy (p_args->argv[p_args->argc], token, tok_len);
       p_args->argc++;
+      token = strtok_r (NULL, delim, &save_ptr);
     }
   p_args->argv[p_args->argc] = NULL;
-
   return p_args;
 }
 
@@ -301,10 +301,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
     strlcpy (t->name, p_args->argv[0], sizeof t->name);
 
   /* Open executable file. */
-  t->executable_file = filesys_open (file_name);
+  t->executable_file = filesys_open (p_args->argv[0]);
   if (t->executable_file == NULL)
     {
-      printf ("load: %s: open failed\n", file_name);
+      printf ("load: %s: open failed\n", p_args->argv[0]);
       goto done;
     }
   else
@@ -504,13 +504,26 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   return true;
 }
 
-/**/
+/* free the process_args struct */
+void
+free_process_args (process_args *p_args)
+{
+  for (int i = 0; i < p_args->argc; i++)
+    {
+      free (p_args->argv[i]);
+    }
+  free (p_args->argv);
+  free (p_args);
+}
+
+/* push args in stack to start new process */
 bool
 push_args_in_stack (void **esp, process_args *p_args)
 {
   int i;
-  char **argv_ptr = malloc (MAX_ARGC * 4);
+  char *argv_ptr[p_args->argc];
 
+  /* argv[i][...] */
   for (i = p_args->argc - 1; i >= 0; i--)
     {
       size_t tok_len = strlen (p_args->argv[i]) + 1;
@@ -520,6 +533,7 @@ push_args_in_stack (void **esp, process_args *p_args)
     }
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
+  /* stack-align */
   int stack_align = ((size_t) (*esp) - p_args->argc * 4 - 3 * 4) % 16;
   *esp -= stack_align;
   memset (*esp, 0, stack_align);
@@ -529,6 +543,7 @@ push_args_in_stack (void **esp, process_args *p_args)
   memset (*esp, 0, 4);
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
+  /* argv[i] */
   for (int i = p_args->argc - 1; i >= 0; i--)
     {
       *esp -= sizeof (char *);
@@ -536,15 +551,18 @@ push_args_in_stack (void **esp, process_args *p_args)
     }
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
+  /* argv */
   char *argv_addr = *esp;
   *esp -= 4;
   memcpy (*esp, &argv_addr, 4);
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
+  /* argc */
   *esp -= sizeof (int);
   memcpy (*esp, &p_args->argc, sizeof (int));
   // hex_dump(PHYS_BASE, *esp, PHYS_BASE - (*esp), true);
 
+  /* return address */
   *esp -= sizeof (void *);
   memset (*esp, 0, sizeof (void *));
   // printf("final: \n");
@@ -570,6 +588,7 @@ setup_stack (void **esp, process_args *p_args)
         {
           *esp = PHYS_BASE;
           push_args_in_stack (esp, p_args);
+          // free_process_args (p_args);
         }
       else
         palloc_free_page (kpage);

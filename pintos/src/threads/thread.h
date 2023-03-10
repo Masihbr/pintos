@@ -116,6 +116,7 @@ struct thread
     struct list file_descs;             /* The list of this thread's File Descriptors. */
     int next_fd;                        /* The next fd */
     struct file *executable_file;       /* The executable file. */
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
