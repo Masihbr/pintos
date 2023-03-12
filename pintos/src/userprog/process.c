@@ -140,10 +140,10 @@ process_exit (void)
   struct list *files;
   while (!list_empty ((files = &cur->file_descs)))
     {
-      struct list_elem *e = list_front (files);
+      struct list_elem *e = list_pop_front (files);
       struct file_t *ft = list_entry (e, struct file_t, elem);
-      e = list_pop_front (files);
       file_close (ft->f);
+      free (ft);
     }
 
   uint32_t *pd;

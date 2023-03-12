@@ -383,8 +383,7 @@ free_children_status (tid_t tid)
           s->parent_finished = true;
           if (s->finished)
             {
-              e = list_remove (e);
-              list_remove (&s->elem);
+              e = list_remove (&s->elem);
               free (s);
               continue;
             }
@@ -577,15 +576,13 @@ init_thread (struct thread *t, const char *name, int priority)
 struct status_t *
 init_status (tid_t tid)
 {
-  struct status_t *status = malloc (sizeof (struct status_t *));
+  struct status_t *status = malloc (sizeof (struct status_t));
   status->tid = tid;
   status->ptid = thread_tid ();
   status->return_value = NULL;
   status->finished = false;
   status->parent_finished = false;
   status->waited = false;
-  (&status->elem)->next = malloc (sizeof ((&status->elem)->next));
-  (&status->elem)->prev = malloc (sizeof ((&status->elem)->prev));
 
   list_push_back (&status_list, &status->elem);
   return status;
