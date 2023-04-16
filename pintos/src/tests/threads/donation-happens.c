@@ -28,6 +28,7 @@ test_donation_happens (void)
   thread_yield ();
   thread_create ("t3", 63, t3_func, NULL);
   thread_yield ();
+  sema_up (&semaphore);
 }
 
 void
