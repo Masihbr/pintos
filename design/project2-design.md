@@ -241,11 +241,169 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
 
 >> پرسش هشتم: در کلاس سه صفت مهم ریسه‌ها که سیستم عامل هنگامی که ریسه درحال اجرا نیست را ذخیره می‌کند، بررسی کردیم:‍‍ `program counter` ، ‍‍‍`stack pointer` و `registers`. بررسی کنید که این سه کجا و چگونه در `Pintos` ذخیره می‌شوند؟ مطالعه ‍`switch.S` و تابع ‍`schedule` در فایل `thread.c` می‌تواند مفید باشد.
 
+در فایل switch.S میبینیم که برای تابع switch_thread که در تابع schedule کال می‌شود کد اسمبلی  قرار  دارد. تابع switch_threads مسئول ذخیره سازی وضعیت ترد در حال اجرا cur است و سوییچ به ترد بعدی next است.
+
+برای اینکار این تابع در ابتدا مقادیر رجیستر های ebx, ebp, esi, edi را پوش می‌کند. این رجیستر ها توسط فراخوانی کننده محافظت شده و در انتهای تابع بازیابی می‌شوند. سپس این تابع esp که همان استک پوینتر فعلی است را در خانه حافظه ای که مربوط به نشانگر استک در ترد قدیمی است ذخیره می‌کند. این مهم با استفاده از movl و رجیستر های esp, eax + offset_address_in_edx صورت می‌گیرد.
+در انتها پس از پاپ کردن رجیستر های ذخیره شده کنترل با ret به فراخوانی کننده داده ‌می‌شود. 
+وقتی که یک intrupt  رخ می‌دهد رجیستر حاوی program counter به طور خودکار در استک ذخیره می‌شود.
+
+```c
+static void
+schedule (void)
+{
+  struct thread *cur = running_thread ();
+  struct thread *next = next_thread_to_run ();
+  struct thread *prev = NULL;
+
+  ASSERT (intr_get_level () == INTR_OFF);
+  ASSERT (cur->status != THREAD_RUNNING);
+  ASSERT (is_thread (next));
+
+  if (cur != next)
+    prev = switch_threads (cur, next);
+  thread_schedule_tail (prev);
+}
+```
+```asm
+.globl switch_threads
+.func switch_threads
+switch_threads:
+	# Save caller's register state.
+	#
+	# Note that the SVR4 ABI allows us to destroy %eax, %ecx, %edx,
+	# but requires us to preserve %ebx, %ebp, %esi, %edi.  See
+	# [SysV-ABI-386] pages 3-11 and 3-12 for details.
+	#
+	# This stack frame must match the one set up by thread_create()
+	# in size.
+	pushl %ebx
+	pushl %ebp
+	pushl %esi
+	pushl %edi
+
+	# Get offsetof (struct thread, stack).
+.globl thread_stack_ofs
+	mov thread_stack_ofs, %edx
+
+	# Save current stack pointer to old thread's stack, if any.
+	movl SWITCH_CUR(%esp), %eax
+	movl %esp, (%eax,%edx,1)
+
+	# Restore stack pointer from new thread's stack.
+	movl SWITCH_NEXT(%esp), %ecx
+	movl (%ecx,%edx,1), %esp
+
+	# Restore caller's register state.
+	popl %edi
+	popl %esi
+	popl %ebp
+	popl %ebx
+        ret
+.endfunc
+```
+
 >> پرسش نهم: وقتی یک ریسه‌ی هسته در ‍`Pintos` تابع `thread_exit` را صدا می‌زند، کجا و به چه ترتیبی صفحه شامل پشته و `TCB` یا `struct thread` آزاد می‌شود؟ چرا این حافظه را نمی‌توانیم به کمک صدازدن تابع ‍`palloc_free_page` داخل تابع ‍`thread_exit` آزاد کنیم؟
+
+همونطور که میبینید در آخر تابع
+`thread_exit`
+تابع 
+`schedule`
+فراخوانی میشود که باتوجه به سوال قبلی در این تابع مقادیر
+stack pointer، program counter و registers
+در پشته ذخیره میشود و درنهایت تابع 
+`thread_schedule_tail (prev)`
+صدا میشود و
+`palloc_free_page`
+را بر روی این تابع فراخوانی میکند.
+
+بنابراین درصورتی که 
+`palloc_free_page`
+در 
+`thread_exit`
+صدا شود، چه قبل از
+`schedule`
+و چه بعد از آن مشکل‌ساز خواهد بود.
+
+```c
+// thread.c
+
+void
+thread_exit (void)
+{
+  ASSERT (!intr_context ());
+
+#ifdef USERPROG
+  process_exit ();
+#endif
+
+  /* Remove thread from all threads list, set our status to dying,
+     and schedule another process.  That process will destroy us
+     when it calls thread_schedule_tail(). */
+  intr_disable ();
+
+  struct thread *cur = thread_current ();
+  struct status_t *status = status_current ();
+  printf ("%s: exit(%d)\n", cur->name, status->return_value);
+  sema_up (&cur->sema);
+  status->finished = true;
+  list_remove (&cur->allelem);
+  cur->status = THREAD_DYING;
+  schedule ();
+  NOT_REACHED ();
+}
+
+static void
+schedule (void)
+{
+  struct thread *cur = running_thread ();
+  struct thread *next = next_thread_to_run ();
+  struct thread *prev = NULL;
+
+  ASSERT (intr_get_level () == INTR_OFF);
+  ASSERT (cur->status != THREAD_RUNNING);
+  ASSERT (is_thread (next));
+
+  if (cur != next)
+    prev = switch_threads (cur, next);
+  thread_schedule_tail (prev);
+}
+
+void
+thread_schedule_tail (struct thread *prev)
+{
+  struct thread *cur = running_thread ();
+
+  ASSERT (intr_get_level () == INTR_OFF);
+
+  /* Mark us as running. */
+  cur->status = THREAD_RUNNING;
+
+  /* Start new time slice. */
+  thread_ticks = 0;
+
+#ifdef USERPROG
+  /* Activate the new address space. */
+  process_activate ();
+#endif
+
+  /* If the thread we switched from is dying, destroy its struct
+     thread.  This must happen late so that thread_exit() doesn't
+     pull out the rug under itself.  (We don't free
+     initial_thread because its memory was not obtained via
+     palloc().) */
+  if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread)
+    {
+      ASSERT (prev != cur);
+      palloc_free_page (prev);
+    }
+}
+```
 
 >> پرسش دهم: زمانی که تابع ‍`thread_tick` توسط `timer interrupt handler` صدا زده می‌شود، در کدام پشته اجرا می‌شود؟
 
 >> پرسش یازدهم: یک پیاده‌سازی کاملا کاربردی و درست این پروژه را در نظر بگیرید که فقط یک مشکل درون تابع ‍`sema_up()` دارد. با توجه به نیازمندی‌های پروژه سمافورها(و سایر متغیرهای به‌هنگام‌سازی) باید ریسه‌های با اولویت بالاتر را بر ریسه‌های با اولویت پایین‌تر ترجیح دهند. با این حال پیاده‌سازی ریسه‌های با اولویت بالاتر را براساس اولویت مبنا `Base Priority` به جای اولویت موثر ‍`Effective Priority` انتخاب می‌کند. اساسا اهدای اولویت زمانی که سمافور تصمیم می‌گیرد که کدام ریسه رفع مسدودیت شود، تاثیر داده نمی‌شود. تستی طراحی کنید که وجود این باگ را اثبات کند. تست‌های `Pintos` شامل کد معمولی در سطح هسته (مانند متغیرها، فراخوانی توابع، جملات شرطی و ...) هستند و می‌توانند متن چاپ کنند و می‌توانیم متن چاپ شده را با خروجی مورد انتظار مقایسه کنیم و اگر متفاوت بودند، وجود مشکل در پیاده‌سازی اثبات می‌شود. شما باید توضیحی درباره این که تست چگونه کار می‌کند، خروجی مورد انتظار و خروجی واقعی آن فراهم کنید.
+
+[Test file](pintos/src/tests/threads/donation-happens.c)
 
 ## سوالات نظرسنجی
 
