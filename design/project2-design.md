@@ -4,13 +4,11 @@
 
 >> نام، نام خانوادگی و ایمیل خود را در ادامه وارد کنید.
 
-نام نام خانوادگی <email@domain.example>
+مسیح بیگی ریزی <masihbr@gmail.com>
 
-نام نام خانوادگی <email@domain.example>
+درین ستوده <dorrinsotoudeh123@gmail.com>
 
-نام نام خانوادگی <email@domain.example>
-
-نام نام خانوادگی <email@domain.example>
+علی مورکیان <moroukianali@gmail.com>
 
 ## مقدمه
 
@@ -47,22 +45,197 @@
 >> پرسش اول: تعریف `struct`های جدید، `struct`های تغییر داده شده، متغیرهای گلوبال یا استاتیک، `typedef`ها یا `enumeration`ها را در اینجا آورده و برای هریک در ۲۵ کلمه یا کمتر توضیح بنویسید.
 
 >> پرسش دوم: داده‌ساختارهایی که برای اجرای `priority donation` استفاده شده‌است را توضیح دهید. (می‌توانید تصویر نیز قرار دهید)
+``` diff
+// thread.h:
+struct thread
+  {
+    ...
+
+    int priority;                       /* Priority. */
++    int effective_priority;             /* Effective priority. (init at `priority`. can be donated to) */
+
++    struct list aquired_locks;
++    struct lock *blocking_lock;
+
+    ...
+  };
+
+// synch.h:
+struct lock
+  {
+    struct thread *holder;
+    struct semaphore semaphore;
+
++    int max_priority;      // is thread->priority at init
++    struct list_elem elem; // for thread::locks
+  };
+```
+
+حال هربار یک ترد تابع
+`lock_acquire (lock)`
+را روی یک قفل فراخوانی میکند، درصورتی که مقدار ترد 
+`holder`
+آن قفل
+دارای
+`effective_priority`
+کمتری نسب به ترد فعلی ما باشد، مقدار آن به 
+`effective_priority`
+ترد فعلی تغییر میکند.
+علاوه بر این باید مقدار
+`blocking_lock`
+ترد
+`holder`
+این قفل نیز بررسی شود و درصورتی که NULL نبود، باید مقدار
+`effective_priority`
+ترد
+`holder`
+این قفل نیز بروز شود.
+
+```
+thread ta: p=1
+    has lock la
+thread tb: p=2
+    has lock lb
+    aquire la (has to wait for ta)
+thread tc: p=3
+    aquire lb
+
+// Using blocking_lock and it's holder we can traverse
+// through threads until blocking_lock is NULL
+// will donate priority if needed on the way
+// priority after donation will be like:
+
+thread ta: p=3
+    has lock la
+thread tb: p=3
+    has lock lb
+    aquire la (has to wait for ta)
+thread tc: p=3
+    aquire lb
+```
+هنگام رهایی یک قفل با فراخوانی تابع 
+`lock_release (lock)`
+باید قفل را از لیست 
+`aquired_locks`
+حذف کرده و مقدار
+`effective_priority`
+ترد قعلی (تردی که درحال release قفل است)
+باید باتوجه به ماکسیمم 
+`max_priority`
+قفل‌های موجود در لیست
+`aquired_locks`
+بروز میکنیم.
 
 ### الگوریتم
 
 >> پرسش سوم: چگونه مطمئن می‌شوید که ریسه با بیشترین اولویت که منتظر یک قفل، سمافور یا `condition variable` است زودتر از همه بیدار می‌شود؟
 
+توابع زیر همگی برای بیدار‌ کردن ترد منتظر، از سمافور استفاده میکنند. 
+بنابراین میتوان با تغییر جزیی در تابع 
+`sema_up` 
+کاری کنیم که همواره ترد با بیشترین
+`effective_priority`
+بیدار شود.
+
+``` c
+// synch.c
+
+void
+sema_up (struct semaphore *sema)
+{
+  enum intr_level old_level;
+
+  ASSERT (sema != NULL);
+
+  old_level = intr_disable ();
+  if (!list_empty (&sema->waiters))
+    thread_unblock (list_entry (list_pop_front (&sema->waiters), // change this to remove highest priority thread
+                                struct thread, elem));
+  sema->value++;
+  intr_set_level (old_level);
+}
+
+void
+lock_release (struct lock *lock)
+{
+  ASSERT (lock != NULL);
+  ASSERT (lock_held_by_current_thread (lock));
+
+  lock->holder = NULL;
+  sema_up (&lock->semaphore);
+}
+
+void
+cond_signal (struct condition *cond, struct lock *lock UNUSED)
+{
+  ASSERT (cond != NULL);
+  ASSERT (lock != NULL);
+  ASSERT (!intr_context ());
+  ASSERT (lock_held_by_current_thread (lock));
+
+  if (!list_empty (&cond->waiters))
+    sema_up (&list_entry (list_pop_front (&cond->waiters),
+                          struct semaphore_elem, elem)->semaphore);
+}
+```
+
 >> پرسش چهارم: مراحلی که هنگام صدازدن `lock_acquire()` منجر به `priority donation` می‌شوند را نام ببرید. دونیشن‌های تو در تو چگونه مدیریت می‌شوند؟
 
+ابتدا مقدار
+`effective_priority`
+ترد
+`holder`
+آن قفل را بروز میکنیم.
+سپس بررسی میکنیم که ایا این ترد صاحب قفل، خود blocking هست یا خیر
+(برای اینکار مقدار
+`blocking_lock`
+آن را بررسی میکنیم).
+اگر نال نبود، مقدار
+`effective_priority`
+ترد 
+`holder`
+این قفل را نیز آپدیت میکنیم. (این عملیات بصورت iterative ادامه دارد تا جایی که ترد موردنظر blocking نباشد).
+هر بار مقدار 
+`max_priority`
+قفل نیز بروز میشود.
+
 >> پرسش پنجم: مراحلی که هنگام صدا زدن `lock_release()` روی یک قفل که یک ریسه با اولویت بالا منتظر آن است، رخ می‌دهد را نام ببرید.
+
+مقدار 
+`max_priority`
+این قفل باید باتوجه به 
+`effective_priority`
+ترد‌های موجود در
+`lock->semaphore->waiters`
+بروز شود. همچنین مقدار
+`effective_priority`
+ترد فعلی نیز باید برابر ماکسیمم مقدار
+`max_priority`
+بین قفل‌های موجود در
+`aquired_locks`
+ش بشود.
+درصورتی که
+`aquired_locks`
+خالی بود
+`effective_priority`
+به
+`priority`
+بازمی‌گردد.
 
 ### همگام‌سازی
 
 >> پرسش ششم: یک شرایط احتمالی برای رخداد `race condition` در `thread_set_priority` را بیان کنید و توضیح دهید که چگونه پیاده‌سازی شما از رخداد آن جلوگیری می‌کند. آیا می‌توانید با استفاده از یک قفل از رخداد آن جلوگیری کنید؟
 
+وقتی میخواهیم مقدار priority را بخوانیم، چون توابع لازم این کار در sema_up و sema_down استفاده می‌شوند و به دلیل disable شدن intrupt ها context-switch رخ نمی دهد و مقدار priority تغییر نمیابد. در این حالت با race condition  مواجه نیستیم.
+
+
 ### منطق
 
 >> پرسش هفتم: چرا این طراحی را استفاده کردید؟ برتری طراحی فعلی خود را بر طراحی‌های دیگری که مدنظر داشته‌اید بیان کنید.
+
+برای بیدارکردن ترد دارای بالاترین اولویت، این روش هم میتوان استفاده کرد که هنگام افزودن به لیست ترد‌ها از list_insert_sorted استفاده کنیم و هربار اولویت تغییر کرد لیست را مرتب کنیم اما باتوجه به وجود تعداد لیست‌های زیاد اینکار به‌نظرمان وقتگیر و پیچیده امد.
+
+درصورتی که max_prioty را در قفل قرار نمیدادیم فرایند بروزسازی اولویت هنگام release بسیار پیچیده میشد.
 
 ## سوالات افزون بر طراحی
 
