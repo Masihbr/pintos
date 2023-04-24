@@ -462,6 +462,8 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->effective_priority = priority;
+  t->blocking_lock = NULL;
   t->magic = THREAD_MAGIC;
   list_init (&(t->acquired_locks));
 
@@ -483,6 +485,25 @@ alloc_frame (struct thread *t, size_t size)
   return t->stack;
 }
 
+bool
+effective_priority_less (const struct list_elem *thread_elem,
+                        const struct list_elem *other_thread_elem,
+                        void *aux UNUSED)
+{
+  struct thread *thread = list_entry (thread_elem, struct thread, elem);
+  struct thread *other_thread
+      = list_entry (other_thread_elem, struct thread, elem);
+  return thread->effective_priority < other_thread->effective_priority;
+}
+
+struct thread *
+get_thread_with_max_priority (struct list *thread_list)
+{
+  struct list_elem *thread
+      = list_max (thread_list, effective_priority_less, NULL);
+  return list_entry (thread, struct thread, elem);
+}
+
 /* Chooses and returns the next thread to be scheduled.  Should
    return a thread from the run queue, unless the run queue is
    empty.  (If the running thread can continue running, then it
@@ -494,7 +515,11 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    {
+      struct thread *next_thread = get_thread_with_max_priority (&ready_list);
+      list_remove (&next_thread->elem);
+      return next_thread;
+    }
 }
 
 /* Completes a thread switch by activating the new thread's page
