@@ -95,7 +95,7 @@ struct thread
     int priority;                       /* Priority. */
 +    int effective_priority;             /* Effective priority. (init at `priority`. can be donated to) */
 
-+    struct list aquired_locks;
++    struct list acquired_locks;
 +    struct lock *blocking_lock;
 
     ...
@@ -157,14 +157,14 @@ thread tc: p=3
 هنگام رهایی یک قفل با فراخوانی تابع 
 `lock_release (lock)`
 باید قفل را از لیست 
-`aquired_locks`
+`acquired_locks`
 حذف کرده و مقدار
 `effective_priority`
 ترد قعلی (تردی که درحال release قفل است)
 باید باتوجه به ماکسیمم 
 `max_priority`
 قفل‌های موجود در لیست
-`aquired_locks`
+`acquired_locks`
 بروز میکنیم.
 
 ### الگوریتم
@@ -253,10 +253,10 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
 ترد فعلی نیز باید برابر ماکسیمم مقدار
 `max_priority`
 بین قفل‌های موجود در
-`aquired_locks`
+`acquired_locks`
 ش بشود.
 درصورتی که
-`aquired_locks`
+`acquired_locks`
 خالی بود
 `effective_priority`
 به
