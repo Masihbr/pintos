@@ -264,6 +264,15 @@ lock_try_acquire (struct lock *lock)
   return success;
 }
 
+bool lock_priority_less (const struct list_elem *lock_elem,
+                            const struct list_elem *other_lock_elem,
+                            void *aux UNUSED)
+{
+  struct lock *lock = list_entry (lock_elem, struct lock, elem);
+  struct lock *other_lock = list_entry (other_lock_elem, struct lock, elem);
+  return lock->max_priority > other_lock->max_priority;
+}
+
 /* Releases LOCK, which must be owned by the current thread.
 
    An interrupt handler cannot acquire a lock, so it does not
@@ -275,8 +284,21 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  lock->holder = NULL;
   list_remove (&lock->elem);
+  struct thread *current_thread = thread_current ();
+  if (list_empty(&current_thread->acquired_locks))
+    current_thread->effective_priority = current_thread->priority;
+  else
+    {
+      current_thread->effective_priority
+          = list_entry (list_max (&current_thread->acquired_locks,
+                                  lock_priority_less, NULL),
+                        struct lock, elem)
+                ->max_priority;
+    }
+
+  lock->holder = NULL;
+  
   sema_up (&lock->semaphore);
 }
 
