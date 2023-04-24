@@ -181,6 +181,24 @@ lock_init (struct lock *lock)
   sema_init (&lock->semaphore, 1);
 }
 
+/* Recursively donate priority */
+void
+donate_priority (struct lock *lock, int priority)
+{
+  struct thread *lock_holder = lock->holder;
+  if (lock_holder != NULL)
+    {
+      if (lock_holder->effective_priority < priority)
+        {
+          lock_holder->effective_priority = priority;
+          lock->max_priority = priority;
+          // TODO: limit depth of recursion
+          if (lock_holder->blocking_lock != NULL)
+            donate_priority (lock_holder->blocking_lock, priority);
+        }
+    }
+}
+
 /* Acquires LOCK, sleeping until it becomes available if
    necessary.  The lock must not already be held by the current
    thread.
@@ -196,8 +214,32 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  sema_down (&lock->semaphore);
+  struct thread *lock_holder = lock->holder;
   struct thread *current_thread = thread_current ();
+
+  if (lock_holder != NULL)
+    {
+      current_thread->blocking_lock = lock;
+      /* Donate priority to lock holder, to avoid Priority Inversion */
+      if (lock_holder->effective_priority < current_thread->effective_priority)
+        {
+          lock_holder->effective_priority = current_thread->effective_priority;
+          lock->max_priority = current_thread->effective_priority;
+        }
+      /* Donate priority to lock holder, to avoid Priority Inversion */
+      if (lock_holder->blocking_lock != NULL)
+        {
+          donate_priority (lock_holder->blocking_lock,
+                           current_thread->effective_priority);
+        }
+    }
+  else
+    {
+      lock->max_priority = current_thread->effective_priority;
+    }
+
+  current_thread->blocking_lock = lock;
+  sema_down (&lock->semaphore);
   lock->holder = current_thread;
   list_push_back (&current_thread->acquired_locks, &lock->elem);
 }
