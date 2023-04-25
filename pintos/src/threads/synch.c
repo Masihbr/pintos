@@ -112,21 +112,17 @@ sema_up (struct semaphore *sema)
 
   ASSERT (sema != NULL);
 
-  bool should_yeild = false;
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters)) {
     struct thread *prime_thread = get_thread_with_max_priority (&sema->waiters);
     list_remove (&prime_thread->elem);
     thread_unblock (prime_thread);
-    if (prime_thread->effective_priority > thread_current ()->effective_priority)
-      should_yeild = true;
     }
 
   sema->value++;
   
   // thread_unblock puts thread in ready list, so we need to yield
-  if (should_yeild)
-    thread_yield ();
+  thread_yield ();
 
   intr_set_level (old_level);
 }
@@ -391,10 +387,10 @@ sema_elem_priority_less (const struct list_elem *sema_elem,
   return sema->priority < other_sema->priority;
 }
 
-struct semaphore * get_semaphore_with_max_priority (struct list * sema_elem_list) {
+struct semaphore_elem * get_max_priority_semaphore_elem (struct list * sema_elem_list) {
   struct list_elem *sema_elem
     = list_max (sema_elem_list, sema_elem_priority_less, NULL);
-  return &(list_entry (sema_elem, struct semaphore_elem, elem)->semaphore);
+  return list_entry (sema_elem, struct semaphore_elem, elem);
 }
 
 /* If any threads are waiting on COND (protected by LOCK), then
@@ -412,8 +408,12 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
 
-  if (!list_empty (&cond->waiters))
-    sema_up (get_semaphore_with_max_priority(&cond->waiters));
+  if (!list_empty (&cond->waiters)) {
+      struct semaphore_elem* sema_elem_prime = get_max_priority_semaphore_elem (&cond->waiters);
+      struct semaphore* sema_prime = &sema_elem_prime->semaphore;
+      list_remove (&sema_elem_prime->elem);
+      sema_up (sema_prime);
+    }
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
