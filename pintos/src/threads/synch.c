@@ -123,11 +123,12 @@ sema_up (struct semaphore *sema)
     }
 
   sema->value++;
-  intr_set_level (old_level);
   
   // thread_unblock puts thread in ready list, so we need to yield
   if (should_yeild)
     thread_yield ();
+
+  intr_set_level (old_level);
 }
 
 static void sema_test_helper (void *sema_);
@@ -279,7 +280,7 @@ bool lock_priority_less (const struct list_elem *lock_elem,
 {
   struct lock *lock = list_entry (lock_elem, struct lock, elem);
   struct lock *other_lock = list_entry (other_lock_elem, struct lock, elem);
-  return lock->max_priority > other_lock->max_priority;
+  return lock->max_priority < other_lock->max_priority;
 }
 
 /* Releases LOCK, which must be owned by the current thread.
