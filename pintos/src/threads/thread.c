@@ -201,6 +201,9 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  /* After creating new thread, thread with max priority should be run */
+  thread_yield ();
+
   return tid;
 }
 

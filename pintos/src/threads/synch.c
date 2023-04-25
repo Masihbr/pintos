@@ -112,18 +112,22 @@ sema_up (struct semaphore *sema)
 
   ASSERT (sema != NULL);
 
+  bool should_yeild = false;
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters)) {
     struct thread *prime_thread = get_thread_with_max_priority (&sema->waiters);
     list_remove (&prime_thread->elem);
     thread_unblock (prime_thread);
-  }
-    
+    if (prime_thread->effective_priority > thread_current ()->effective_priority)
+      should_yeild = true;
+    }
+
   sema->value++;
   intr_set_level (old_level);
   
   // thread_unblock puts thread in ready list, so we need to yield
-  thread_yield ();
+  if (should_yeild)
+    thread_yield ();
 }
 
 static void sema_test_helper (void *sema_);
@@ -243,6 +247,7 @@ lock_acquire (struct lock *lock)
 
   current_thread->blocking_lock = lock;
   sema_down (&lock->semaphore);
+  current_thread->blocking_lock = NULL;
   lock->holder = current_thread;
   lock->max_priority = current_thread->effective_priority;
   list_push_back (&current_thread->acquired_locks, &lock->elem);
