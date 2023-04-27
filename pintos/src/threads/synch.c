@@ -32,6 +32,8 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+#define MAX_DONATION_DEPTH 8
+
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -190,8 +192,12 @@ lock_init (struct lock *lock)
 
 /* Recursively donate priority */
 void
-donate_priority (struct lock *lock, int priority)
+donate_priority (struct lock *lock, int priority, int depth)
 {
+  if (depth <= 0) {
+    return;
+  }
+
   struct thread *lock_holder = lock->holder;
   if (lock_holder != NULL)
     {
@@ -201,7 +207,7 @@ donate_priority (struct lock *lock, int priority)
           lock->max_priority = priority;
           // TODO: limit depth of recursion
           if (lock_holder->blocking_lock != NULL)
-            donate_priority (lock_holder->blocking_lock, priority);
+            donate_priority (lock_holder->blocking_lock, priority, depth - 1);
         }
     }
 }
@@ -238,7 +244,8 @@ lock_acquire (struct lock *lock)
       if (lock_holder->blocking_lock != NULL)
         {
           donate_priority (lock_holder->blocking_lock,
-                           current_thread->effective_priority);
+                           current_thread->effective_priority,
+                           MAX_DONATION_DEPTH);
         }
     }
 
