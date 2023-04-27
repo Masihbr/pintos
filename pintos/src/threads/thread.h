@@ -107,6 +107,8 @@ struct thread
     int effective_priority;             /* Effective priority. */
     struct list acquired_locks;         /* List of locks held by thread. */
     struct lock *blocking_lock;          /* Lock thread is waiting for. */
+
+    int64_t waking_time;                  /* Thread waking time*/
   };
 
 /* If false (default), use round-robin scheduler.

@@ -201,6 +201,9 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  /* After creating new thread, thread with max priority should be run */
+  thread_yield ();
+
   return tid;
 }
 
@@ -335,14 +338,42 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority)
 {
-  thread_current ()->priority = new_priority;
+  enum intr_level old_level;
+  ASSERT (new_priority >= PRI_MIN && new_priority <= PRI_MAX);
+  old_level = intr_disable ();
+  struct thread * cur = thread_current ();
+  cur->priority = new_priority;
+  if (list_empty (&cur->acquired_locks))
+    cur->effective_priority = new_priority;
+  else
+    {
+      struct list_elem *e;
+
+      for (e = list_begin (&cur->acquired_locks);
+           e != list_end (&cur->acquired_locks); e = list_next (e))
+        {
+          struct lock *lock = list_entry (e, struct lock, elem);
+          if (new_priority > lock->max_priority)
+            lock->max_priority = new_priority;
+        }
+
+      cur->effective_priority
+          = list_entry (
+                list_max (&cur->acquired_locks, lock_priority_less, NULL),
+                struct lock, elem)
+                ->max_priority;
+    }
+  intr_set_level (old_level);
+
+  /* Make schedule choose thread with highest priority immedietly */
+  thread_yield ();
 }
 
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void)
 {
-  return thread_current ()->priority;
+  return thread_current ()->effective_priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
