@@ -28,24 +28,71 @@
 
 >>‫ در این قسمت تعریف هر یک از `struct` ها، اعضای `struct` ها، متغیرهای سراسری یا ایستا، `typedef` ها یا `enum` هایی که ایجاد کرده‌اید یا تغییر داده‌اید را‫ بنویسید و دلیل هر کدام را در حداکثر ۲۵ کلمه توضیح دهید.
 
+```c
+// inode.c
+...
+#include "threads/synch.h"
+
+/* Identifies an inode. */
+#define INODE_MAGIC 0x494e4f44
+
+typedef struct cache_block
+{    
+  struct list_elem elem;              /* Element in inode list. */
+  block_sector_t sector;              /* Sector number (or NULL when invalid) of disk location. */
+  bool dirty;                         /* cache block is dirty and should be written back on remove from lru_cache_list. */
+  char data[BLOCK_SECTOR_SIZE];       /* cached data with size of each block sector. */
+  struct lock lock;                   /* lock for Synchronization (multiple threads accessing cache_block). */
+} cache_block_t;
+
+cache_block_t cache_blocks[64];       /* cache blocks with size of 64. */
+struct list lru_cache_list;           /* cache list with lru replacement policy.*/
+struct lock lru_cache_list_lock;      /* lock for Synchornization (multiple threads accessing lru_cache_list).*/
+
+static void read_block_cache (block_sector_t sector, void *buffer_, off_t size,
+                        off_t offset);
+static void write_block_cache (block_sector_t sector, void *buffer_, off_t size,
+                        off_t offset);
+
+...
+```
+
+ از  داده ساختار `cache_block_t` برای cache کردن هر سکتور از دیسک استفاده می‌شود. آرایه `cache_blocks` حاوی ۶۴ آیتم از این داده ساختار خواهد بود و برای نگهداری و تعریف هر `cache_block_t` در حافظه مورد استفاده قرار می‌گیرد و لیست `lru_cache_list` وظیفه اصلی نگهداری، سرچ، الگوریتم جایگزینی و دیگر مسائل مربوط به caching را هندل می‌کند.
+
 الگوریتم‌ها
 ------------
 
 >>‫ توضیح دهید که الگوریتم مورد استفاده‌ی شما به چه صورت یک بلاک را برای جایگزین ‫ شدن انتخاب می‌کند؟
 
+ از الگوریتم LRU استفاده خواهیم کرد بدین صورت که اگر یک سکتور در لیست (`lru_cache_list`) ما یافت شود آنرا از لیست حذف کرده و در ابتدای لیست قرار می‌دهیم و اگر پیدا نشد با استفاده از `block_read` مانند حالت بدون cache ابتدا دیسک را خوانده و سپس خانه اخر `lru_cache_list` را حذف کرده و اطلاعات خوانده شده را در آن قرار می‌دهیم 
+و به سر لیست می‌چسبانیم.
 >>‫ روش پیاده‌سازی `read-ahead` را توضیح دهید.
+
+یک استراتژی ساده برای پیاده سازی `read-ahead` این است که هنگام خواندن حافظه پس از miss شدن cache سکتور بعدی نیز خوانده شود و در cache قرار بگیرد در این صورت دو خانه جدید ابتدا لیست اضافه شده و دو خانه اخر حذف می‌شود.
+
+برای انجام `read-ahead` بهتر به استراتژی پیچیده تری نیاز است به طور مثال نگه داشتن یکسری metadata از دسترسی به فایل‌ها و پیشگویی استفاده از هر block از فایل با استفاده از الگوریتم‌های پیشگو (مانند Markov Chain models, Linear Regression models, ...) و cache کردن بلاک‌های پیشبینی شده در پس زمینه.
 
 همگام سازی
 -------------
 
 >>‫ هنگامی که یک پردازه به طور مستمر در حال خواندن یا نوشتن داده در یک بلاک بافرکش‫ می‌باشد به چه صورت از دخالت سایر پردازه‌ها جلوگیری میشود؟
 
+این lock موجود در `cache_block_t` هنگام خواندن و نوشتن acquire شده و جلوی دسترسی همزمان چند ریسه متفاوت را می‌گیرد.
+
 >>‫ در حین خارج شدن یک بلوک از حافظه‌ی نهان، چگونه از پروسه‌های دیگر جلوگیری می‌شود تا‫ به این بلاک دسترسی پیدا نکنند؟
+
+برای ایجاد هرگونه تغییر در `lru_cache_list` لازم است، لاک `lru_cache_list_lock` را بگیریم و این لاک از دسترسزی همزمان چند ریسه متفاوت و ایجاد تغییر همزمان جلوگیری می‌کند.
 
 منطق طراحی
 -----------------
 
 >>‫ یک سناریو را توضیح دهید که از بافر کش، `read-ahead` و یا از `write-behind` استفاده کند.
+
+سناریو برای cache buffer جلوتر توضیح داده شده.
+
+سناریویی که `read-ahead` استفاده کند: اگر فایل بزرگی به صورت ترتیبی خوانده شود (video streaming, DB, Gaming) و یا بخواهیم فایل بزرگی را به صورت ترتیبی بنویسیم استفاده از این فیچر به ما کمک می‌کند.
+
+سناریویی که `write-behind` استفاده کند: نوشتن داده به صورت asynch و priodic هنگامی که صف I/O خالی است می‌تواند در موارد قطعی برق و کرش‌های ناگهانی و اشکالات سخت افزاری کمک کننده باشد و همچنین ترافیک I/O  را به طور کلی کاهش دهد.
 
 فایل‌های قابل گسترش
 =====================
