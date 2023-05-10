@@ -69,6 +69,8 @@ static struct thread *running_thread (void);
 static struct thread *next_thread_to_run (void);
 static void init_thread (struct thread *, const char *name, int priority);
 struct status_t *init_status (tid_t tid);
+void free_status (tid_t tid);
+void free_children_status (tid_t tid);
 static bool is_thread (struct thread *) UNUSED;
 static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
@@ -349,10 +351,45 @@ thread_exit (void)
   printf ("%s: exit(%d)\n", cur->name, status->return_value);
   sema_up (&cur->sema);
   status->finished = true;
+  free_status (cur->tid);
+  free_children_status (cur->tid);
   list_remove (&cur->allelem);
   cur->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
+}
+
+void
+free_status (tid_t tid)
+{
+  struct status_t *status = find_status (tid);
+
+  if (status->parent_finished)
+    {
+      list_remove (&status->elem);
+      free (status);
+    }
+}
+
+void
+free_children_status (tid_t tid)
+{
+  for (struct list_elem *e = list_front (&status_list);
+       e != list_back (&status_list);)
+    {
+      struct status_t *s = list_entry (e, struct status_t, elem);
+      if (s->ptid == tid)
+        {
+          s->parent_finished = true;
+          if (s->finished)
+            {
+              e = list_remove (&s->elem);
+              free (s);
+              continue;
+            }
+        }
+      e = list_next (e);
+    }
 }
 
 /* Yields the CPU.  The current thread is not put to sleep and
@@ -539,13 +576,13 @@ init_thread (struct thread *t, const char *name, int priority)
 struct status_t *
 init_status (tid_t tid)
 {
-  struct status_t *status = malloc (sizeof (struct status_t *));
+  struct status_t *status = malloc (sizeof (struct status_t));
   status->tid = tid;
+  status->ptid = thread_tid ();
   status->return_value = NULL;
   status->finished = false;
+  status->parent_finished = false;
   status->waited = false;
-  (&status->elem)->next = malloc (sizeof ((&status->elem)->next));
-  (&status->elem)->prev = malloc (sizeof ((&status->elem)->prev));
 
   list_push_back (&status_list, &status->elem);
   return status;

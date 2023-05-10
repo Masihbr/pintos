@@ -140,10 +140,10 @@ process_exit (void)
   struct list *files;
   while (!list_empty ((files = &cur->file_descs)))
     {
-      struct list_elem *e = list_front (files);
+      struct list_elem *e = list_pop_front (files);
       struct file_t *ft = list_entry (e, struct file_t, elem);
-      e = list_pop_front (files);
       file_close (ft->f);
+      free (ft);
     }
 
   uint32_t *pd;
@@ -259,6 +259,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 process_args *
 get_process_args (const char *cmd_line)
 {
+  // printf("get_process_args(%s)\n", cmd_line);
   char *token, *save_ptr;
   const char delim[2] = " ";
   process_args *p_args = (process_args *) malloc (sizeof (process_args));
@@ -394,6 +395,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   success = true;
 
  done:
+  free (p_args);
   /* We arrive here whether the load is successful or not. */
   return success;
 }
