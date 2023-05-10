@@ -144,6 +144,12 @@ struct thread
     ...
   };
 ```
+```c
+struct inode
+  {
+    int type_is_dir;
+  };
+```
 
 الگوریتم‌ها
 -----------
