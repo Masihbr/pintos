@@ -4,6 +4,7 @@
 #include <list.h>
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
+#include "threads/synch.h"
 #include "threads/malloc.h"
 
 /* A directory. */
@@ -11,6 +12,7 @@ struct dir
   {
     struct inode *inode;                /* Backing store. */
     off_t pos;                          /* Current position. */
+    struct lock lock;                   /* Lock for dir modification. */
   };
 
 /* A single directory entry. */
