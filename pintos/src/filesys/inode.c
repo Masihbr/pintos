@@ -1,14 +1,35 @@
 #include "filesys/inode.h"
-#include <list.h>
-#include <debug.h>
-#include <round.h>
-#include <string.h>
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
+#include "threads/synch.h"
+#include <debug.h>
+#include <list.h>
+#include <round.h>
+#include <string.h>
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
+
+typedef struct cache_block
+{
+  // Element in lru_cache_list.
+  struct list_elem elem;
+  // Sector number (or NULL when invalid) of disk location.
+  block_sector_t sector;
+  // cache block is dirty and should be written back on remove from
+  // lru_cache_list.
+  bool dirty;
+  // cached data with size of each block sector.
+  char data[BLOCK_SECTOR_SIZE];
+  // lock for Synchronization (multiple threads accessing cache_block).
+  struct lock lock;
+} cache_block_t;
+
+cache_block_t cache_blocks[64];  /* cache blocks with size of 64. */
+struct list lru_cache_list;      /* cache list with lru replacement policy.*/
+struct lock lru_cache_list_lock; /* lock for Synchornization (multiple threads
+                                    accessing lru_cache_list).*/
 
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
