@@ -2,34 +2,14 @@
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
-#include "threads/synch.h"
 #include <debug.h>
 #include <list.h>
 #include <round.h>
 #include <string.h>
+#include <stdio.h>
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
-
-typedef struct cache_block
-{
-  // Element in lru_cache_list.
-  struct list_elem elem;
-  // Sector number (or NULL when invalid) of disk location.
-  block_sector_t sector;
-  // cache block is dirty and should be written back on remove from
-  // lru_cache_list.
-  bool dirty;
-  // cached data with size of each block sector.
-  char data[BLOCK_SECTOR_SIZE];
-  // lock for Synchronization (multiple threads accessing cache_block).
-  struct lock lock;
-} cache_block_t;
-
-cache_block_t cache_blocks[64];  /* cache blocks with size of 64. */
-struct list lru_cache_list;      /* cache list with lru replacement policy.*/
-struct lock lru_cache_list_lock; /* lock for Synchornization (multiple threads
-                                    accessing lru_cache_list).*/
 
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
@@ -83,6 +63,22 @@ void
 inode_init (void)
 {
   list_init (&open_inodes);
+}
+
+
+/* Initializes the cache module. */
+void
+cache_init (void)
+{
+  lock_init (&lru_cache_list_lock);
+  list_init (&lru_cache_list);
+  for (int i = 0; i < CACHE_BLOCKS_COUNT; i++)
+    {
+      cache_blocks[i].dirty = false;
+      cache_blocks[i].sector = NULL;
+      lock_init (&(cache_blocks[i].lock));
+      list_push_back (&lru_cache_list, &(cache_blocks[i].elem));
+    }
 }
 
 /* Initializes an inode with LENGTH bytes of data and
