@@ -237,6 +237,38 @@ read_sector_into_buffer (block_sector_t sector_idx, off_t sector_ofs, void *buff
   return false;
 }
 
+/* find, get, replace cache block */
+cache_block_t *
+find_cache_block (block_sector_t sector_idx)
+{
+  struct list_elem *e;
+  cache_block_t *cache_block;
+  lock_acquire (&lru_cache_list_lock);
+  /* cache hit */
+  for (e = list_begin (&lru_cache_list); e != list_end (&lru_cache_list);
+       e = list_next (e))
+    {
+      cache_block = list_entry (e, cache_block_t, elem);
+      if (cache_block->sector == sector_idx)
+        {
+          list_remove (&cache_block->elem);
+          list_push_front (&lru_cache_list, &cache_block->elem);
+          lock_release (&lru_cache_list_lock);
+          return cache_block;
+        }
+    }
+  /* cache miss */
+  cache_block = list_entry (list_back (&lru_cache_list), cache_block_t, elem);
+  if (cache_block->dirty)
+    block_write (fs_device, cache_block->sector, cache_block->data);
+  cache_block->sector = sector_idx;
+  cache_block->dirty = false;
+  list_remove (&cache_block->elem);
+  list_push_front (&lru_cache_list, &cache_block->elem);
+  lock_release (&lru_cache_list_lock);
+  return cache_block;
+}
+
 /* Read buffer cache of disk sector to memory buffer */
 void
 read_cache_block (block_sector_t sector_idx, off_t sector_ofs, void *buffer,
