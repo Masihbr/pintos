@@ -211,6 +211,32 @@ inode_remove (struct inode *inode)
   inode->removed = true;
 }
 
+/* Read disk sector block to memory buffer */
+static bool
+read_sector_into_buffer (off_t sector_ofs, block_sector_t sector_idx, void *buffer,
+                         uint8_t *bounce, int chunk_size, off_t bytes_read)
+{
+  if (sector_ofs == 0 && chunk_size == BLOCK_SECTOR_SIZE)
+    {
+      /* Read full sector directly into caller's buffer. */
+      block_read (fs_device, sector_idx, buffer + bytes_read);
+    }
+  else
+    {
+      /* Read sector into bounce buffer, then partially copy
+         into caller's buffer. */
+      if (bounce == NULL)
+        {
+          bounce = malloc (BLOCK_SECTOR_SIZE);
+          if (bounce == NULL)
+            return true;
+        }
+      block_read (fs_device, sector_idx, bounce);
+      memcpy (buffer + bytes_read, bounce + sector_ofs, chunk_size);
+    }
+  return false;
+}
+
 /* Reads SIZE bytes from INODE into BUFFER, starting at position OFFSET.
    Returns the number of bytes actually read, which may be less
    than SIZE if an error occurs or end of file is reached. */
@@ -237,25 +263,9 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       if (chunk_size <= 0)
         break;
 
-      if (sector_ofs == 0 && chunk_size == BLOCK_SECTOR_SIZE)
-        {
-          /* Read full sector directly into caller's buffer. */
-          block_read (fs_device, sector_idx, buffer + bytes_read);
-        }
-      else
-        {
-          /* Read sector into bounce buffer, then partially copy
-             into caller's buffer. */
-          if (bounce == NULL)
-            {
-              bounce = malloc (BLOCK_SECTOR_SIZE);
-              if (bounce == NULL)
-                break;
-            }
-          block_read (fs_device, sector_idx, bounce);
-          memcpy (buffer + bytes_read, bounce + sector_ofs, chunk_size);
-        }
-
+      if (read_sector_into_buffer (sector_ofs, sector_idx, buffer, bounce,
+                                   chunk_size, bytes_read))
+        break;
       /* Advance. */
       size -= chunk_size;
       offset += chunk_size;
