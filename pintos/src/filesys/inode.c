@@ -213,8 +213,8 @@ inode_remove (struct inode *inode)
 
 /* Read disk sector block to memory buffer */
 static bool
-read_sector_into_buffer (off_t sector_ofs, block_sector_t sector_idx, void *buffer,
-                         uint8_t *bounce, int chunk_size, off_t bytes_read)
+read_sector_into_buffer (block_sector_t sector_idx, off_t sector_ofs, void *buffer, off_t bytes_read, 
+                         uint8_t *bounce, int chunk_size)
 {
   if (sector_ofs == 0 && chunk_size == BLOCK_SECTOR_SIZE)
     {
@@ -235,6 +235,19 @@ read_sector_into_buffer (off_t sector_ofs, block_sector_t sector_idx, void *buff
       memcpy (buffer + bytes_read, bounce + sector_ofs, chunk_size);
     }
   return false;
+}
+
+/* Read buffer cache of disk sector to memory buffer */
+void
+read_cache_block (block_sector_t sector_idx, off_t sector_ofs, void *buffer,
+                  off_t bytes_read, int chunk_size)
+{
+  cache_block_t *cache_block = find_cache_block (sector_idx);
+  if (cache_block == NULL)
+    return;
+  lock_acquire (&(cache_block->lock));
+  memcpy (buffer + bytes_read, cache_block->data + sector_ofs, chunk_size);
+  lock_release (&(cache_block->lock));
 }
 
 /* Reads SIZE bytes from INODE into BUFFER, starting at position OFFSET.
@@ -263,9 +276,10 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       if (chunk_size <= 0)
         break;
 
-      if (read_sector_into_buffer (sector_ofs, sector_idx, buffer, bounce,
-                                   chunk_size, bytes_read))
+      if (read_sector_into_buffer (sector_idx, sector_ofs, buffer, bytes_read, bounce,
+                                   chunk_size))
         break;
+
       /* Advance. */
       size -= chunk_size;
       offset += chunk_size;

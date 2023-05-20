@@ -44,10 +44,10 @@ off_t inode_write_at (struct inode *, const void *, off_t size, off_t offset);
 void inode_deny_write (struct inode *);
 void inode_allow_write (struct inode *);
 off_t inode_length (const struct inode *);
-void read_cache_block (block_sector_t sector, void *buffer_, off_t size,
-                       off_t offset);
-void write_cache_block (block_sector_t sector, void *buffer_, off_t size,
-                        off_t offset);
-cache_block_t *find_cache_block (block_sector_t sector);
+void read_cache_block (block_sector_t sector_idx, off_t sector_ofs,
+                       void *buffer, off_t bytes_read, int chunk_size);
+void write_cache_block (block_sector_t sector_idx, off_t sector_ofs,
+                        void *buffer, off_t bytes_written, int chunk_size);
+cache_block_t *find_cache_block (block_sector_t sector_idx);
 
 #endif /* filesys/inode.h */
