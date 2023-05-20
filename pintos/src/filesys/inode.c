@@ -299,6 +299,7 @@ find_cache_block (block_sector_t sector_idx)
     block_write (fs_device, cache_block->sector, cache_block->data);
   cache_block->sector = sector_idx;
   cache_block->dirty = false;
+  block_read (fs_device, sector_idx, cache_block->data);
   list_remove (&cache_block->elem);
   list_push_front (&lru_cache_list, &cache_block->elem);
   lock_release (&lru_cache_list_lock);
@@ -356,9 +357,11 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       if (chunk_size <= 0)
         break;
 
-      if (read_sector_into_buffer (sector_idx, sector_ofs, buffer, bytes_read, bounce,
-                                   chunk_size))
-        break;
+      read_cache_block (sector_idx, sector_ofs, buffer, bytes_read,
+                        chunk_size);
+      // if (read_sector_into_buffer (sector_idx, sector_ofs, buffer, bytes_read, bounce,
+      //                              chunk_size))
+      //   break;
 
       /* Advance. */
       size -= chunk_size;
@@ -402,9 +405,12 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       if (chunk_size <= 0)
         break;
 
-      if (write_buffer_into_sector (sector_idx, sector_ofs, sector_left,
-                                    buffer, bytes_written, bounce, chunk_size))
-        break;
+      write_cache_block (sector_idx, sector_ofs, buffer,
+                         bytes_written, chunk_size);
+      // if (write_buffer_into_sector (sector_idx, sector_ofs, sector_left,
+      //                               buffer, bytes_written, bounce,
+      //                               chunk_size))
+      //   break;
 
       /* Advance. */
       size -= chunk_size;
