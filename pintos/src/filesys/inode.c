@@ -311,10 +311,22 @@ read_cache_block (block_sector_t sector_idx, off_t sector_ofs, void *buffer,
                   off_t bytes_read, int chunk_size)
 {
   cache_block_t *cache_block = find_cache_block (sector_idx);
-  if (cache_block == NULL)
-    return;
+  ASSERT (cache_block != NULL);
   lock_acquire (&(cache_block->lock));
   memcpy (buffer + bytes_read, cache_block->data + sector_ofs, chunk_size);
+  lock_release (&(cache_block->lock));
+}
+
+/* write memory buffer to buffer cache of disk sector */
+void
+write_cache_block (block_sector_t sector_idx, off_t sector_ofs, void *buffer,
+                   off_t bytes_written, int chunk_size)
+{
+  cache_block_t *cache_block = find_cache_block (sector_idx);
+  ASSERT (cache_block != NULL);
+  lock_acquire (&(cache_block->lock));
+  memcpy (cache_block->data + sector_ofs, buffer + bytes_written, chunk_size);
+  cache_block->dirty = true;
   lock_release (&(cache_block->lock));
 }
 
