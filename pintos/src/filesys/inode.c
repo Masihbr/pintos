@@ -237,6 +237,42 @@ read_sector_into_buffer (block_sector_t sector_idx, off_t sector_ofs, void *buff
   return false;
 }
 
+/* Write memory buffer to disk sector block */
+static bool
+write_buffer_into_sector (block_sector_t sector_idx, off_t sector_ofs, int sector_left,
+                          void *buffer, off_t bytes_written, uint8_t *bounce,
+                          int chunk_size)
+{
+
+  if (sector_ofs == 0 && chunk_size == BLOCK_SECTOR_SIZE)
+    {
+      /* Write full sector directly to disk. */
+      block_write (fs_device, sector_idx, buffer + bytes_written);
+    }
+  else
+    {
+      /* We need a bounce buffer. */
+      if (bounce == NULL)
+        {
+          bounce = malloc (BLOCK_SECTOR_SIZE);
+          if (bounce == NULL)
+            return true;
+        }
+
+      /* If the sector contains data before or after the chunk
+         we're writing, then we need to read in the sector
+         first.  Otherwise we start with a sector of all zeros. */
+      if (sector_ofs > 0 || chunk_size < sector_left)
+        block_read (fs_device, sector_idx, bounce);
+      else
+        memset (bounce, 0, BLOCK_SECTOR_SIZE);
+      memcpy (bounce + sector_ofs, buffer + bytes_written, chunk_size);
+      block_write (fs_device, sector_idx, bounce);
+    }
+
+  return false;
+}
+
 /* find, get, replace cache block */
 cache_block_t *
 find_cache_block (block_sector_t sector_idx)
@@ -354,31 +390,9 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       if (chunk_size <= 0)
         break;
 
-      if (sector_ofs == 0 && chunk_size == BLOCK_SECTOR_SIZE)
-        {
-          /* Write full sector directly to disk. */
-          block_write (fs_device, sector_idx, buffer + bytes_written);
-        }
-      else
-        {
-          /* We need a bounce buffer. */
-          if (bounce == NULL)
-            {
-              bounce = malloc (BLOCK_SECTOR_SIZE);
-              if (bounce == NULL)
-                break;
-            }
-
-          /* If the sector contains data before or after the chunk
-             we're writing, then we need to read in the sector
-             first.  Otherwise we start with a sector of all zeros. */
-          if (sector_ofs > 0 || chunk_size < sector_left)
-            block_read (fs_device, sector_idx, bounce);
-          else
-            memset (bounce, 0, BLOCK_SECTOR_SIZE);
-          memcpy (bounce + sector_ofs, buffer + bytes_written, chunk_size);
-          block_write (fs_device, sector_idx, bounce);
-        }
+      if (write_buffer_into_sector (sector_idx, sector_ofs, sector_left,
+                                    buffer, bytes_written, bounce, chunk_size))
+        break;
 
       /* Advance. */
       size -= chunk_size;
