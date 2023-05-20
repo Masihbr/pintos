@@ -2,8 +2,8 @@
 #define FILESYS_CACHE_H
 
 #include "devices/block.h"
-#include "threads/synch.h"
 #include "filesys/off_t.h"
+#include "threads/synch.h"
 #include <stdbool.h>
 
 #define CACHE_BLOCKS_COUNT 64
@@ -23,6 +23,14 @@ typedef struct cache_block
   struct lock lock;
 } cache_block_t;
 
+typedef struct cache_stats
+{
+  unsigned hit;
+  unsigned miss;
+  unsigned read;
+  unsigned write;
+} cache_stats_t;
+
 cache_block_t
     cache_blocks[CACHE_BLOCKS_COUNT]; /* cache blocks with size of 64. */
 struct list lru_cache_list;      /* cache list with lru replacement policy.*/
@@ -34,5 +42,6 @@ void read_cache_block (block_sector_t sector_idx, off_t sector_ofs,
                        void *buffer, off_t bytes_read, int chunk_size);
 void write_cache_block (block_sector_t sector_idx, off_t sector_ofs,
                         void *buffer, off_t bytes_written, int chunk_size);
+cache_stats_t *get_cache_stats_instance (void);
 
 #endif /* filesys/cache.h */
