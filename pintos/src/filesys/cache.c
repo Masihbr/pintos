@@ -29,6 +29,34 @@ cache_init (void)
     }
 }
 
+/* reset stats and empty cache */
+void
+cache_reset (void)
+{
+  struct list_elem *e;
+  cache_block_t *cache_block;
+  /* empty cache */
+  lock_acquire (&lru_cache_list_lock);
+  for (e = list_begin (&lru_cache_list); e != list_end (&lru_cache_list);
+       e = list_next (e))
+    {
+      cache_block = list_entry (e, cache_block_t, elem);
+      if (cache_block->dirty)
+        {
+          get_cache_stats_instance ()->write++;
+          block_write (fs_device, cache_block->sector, cache_block->data);
+        }
+      cache_block->dirty = false;
+      cache_block->sector = NULL;
+    }
+  lock_release (&lru_cache_list_lock);
+  /* reset stats */
+  get_cache_stats_instance ()->hit = 0;
+  get_cache_stats_instance ()->miss = 0;
+  get_cache_stats_instance ()->read = 0;
+  get_cache_stats_instance ()->write = 0;
+}
+
 /* find, get, replace cache block */
 static cache_block_t *
 find_cache_block (block_sector_t sector_idx, bool do_read)
