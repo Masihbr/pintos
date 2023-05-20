@@ -1,11 +1,12 @@
 #include "userprog/syscall.h"
-#include "userprog/process.h"
 #include "filesys/filesys.h"
+#include "filesys/cache.h"
 #include "lib/stdio.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
+#include "userprog/process.h"
 #include <stdio.h>
 #include <syscall-nr.h>
 
@@ -14,7 +15,7 @@ static void syscall_handler (struct intr_frame *);
 void
 syscall_init (void)
 {
-  lock_init(&fs_lock);
+  lock_init (&fs_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -27,6 +28,11 @@ args_are_valid (uint32_t *args)
   switch (args[0])
     {
     case SYS_HALT:
+    case SYS_CACHE_HIT:
+    case SYS_CACHE_MISS:
+    case SYS_CACHE_RESET:
+    case SYS_CACHE_READ:
+    case SYS_CACHE_WRITE:
       break;
     case SYS_PRACTICE:
     case SYS_EXIT:
@@ -133,7 +139,7 @@ syscall_handler (struct intr_frame *f)
       int fd = (int) args[1];
       char *buffer = (char *) args[2];
       unsigned size = (unsigned) args[3];
-      
+
       if (fd == STDOUT_FILENO || !is_block_valid (buffer, size))
         exit (f, -1);
       else if (fd == STDIN_FILENO)
@@ -159,7 +165,8 @@ syscall_handler (struct intr_frame *f)
       char *file_name = (char *) args[1];
       int32_t initial_size = (int32_t) args[2];
 
-      if (!is_ptr_valid(file_name) || !is_block_valid (file_name, strlen (file_name) + 1))
+      if (!is_ptr_valid (file_name)
+          || !is_block_valid (file_name, strlen (file_name) + 1))
         exit (f, -1);
       else
         {
@@ -173,7 +180,8 @@ syscall_handler (struct intr_frame *f)
     {
       char *file_name = (char *) args[1];
 
-      if (!is_ptr_valid(file_name) || !is_block_valid (file_name, strlen (file_name) + 1))
+      if (!is_ptr_valid (file_name)
+          || !is_block_valid (file_name, strlen (file_name) + 1))
         exit (f, -1);
       else
         {
@@ -186,7 +194,8 @@ syscall_handler (struct intr_frame *f)
   else if (args[0] == SYS_OPEN)
     {
       char *file_name = (char *) args[1];
-      if (!is_ptr_valid(file_name) || !is_block_valid (file_name, strlen (file_name) + 1))
+      if (!is_ptr_valid (file_name)
+          || !is_block_valid (file_name, strlen (file_name) + 1))
         exit (f, -1);
       else
         {
@@ -255,7 +264,29 @@ syscall_handler (struct intr_frame *f)
       f->eax = file ? file_tell (file->f) : -1;
       lock_release (&fs_lock);
     }
-  else {
-    printf("UNIMPLEMENTED SYSCALL: %d\n", args[0]);
-  }
+
+  else if (args[0] == SYS_CACHE_HIT)
+    {
+      f->eax = get_cache_stats_instance ()->hit;
+    }
+  else if (args[0] == SYS_CACHE_MISS)
+    {
+      f->eax = get_cache_stats_instance ()->miss;
+    }
+  else if (args[0] == SYS_CACHE_READ)
+    {
+      f->eax = get_cache_stats_instance ()->read;
+    }
+  else if (args[0] == SYS_CACHE_WRITE)
+    {
+      f->eax = get_cache_stats_instance ()->write;
+    }
+  else if (args[0] == SYS_CACHE_RESET)
+    {
+      cache_reset ();
+    }
+  else
+    {
+      printf ("UNIMPLEMENTED SYSCALL: %d\n", args[0]);
+    }
 }
