@@ -37,7 +37,7 @@ test_main (void)
 
   random_init (0);
   random_bytes (buf, sizeof buf);
-  buf[BUF_SIZE - 1] = 0;
+  buf[BUF_SIZE - 1] = NULL;
 
   msg ("Going to write data in file");
 
@@ -82,4 +82,5 @@ test_main (void)
 
   CHECK (cache_hit_filled > cache_hit_empty, "Better hitrate after filling cache.");
   CHECK (!(count_cache_write ()), "No write should have been made.");
+  remove (file_name);
 }
