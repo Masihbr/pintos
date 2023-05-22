@@ -1,4 +1,6 @@
-/* Checks Cache hitrate */
+/* In this scenario, you measure the effectiveness of your buffer cache by calculating the hit rate. First, empty the buffer cache
+then open a file and read it sequentially to get the hit rate for an empty buffer cache
+After that, look at the file and open it again and read it in the same way to make sure the hit rate has improved. */
 
 #include "tests/filesys/extended/cache-hitrate.h"
 #include "tests/lib.h"
