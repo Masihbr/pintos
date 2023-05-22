@@ -52,7 +52,8 @@ test_main (void)
 
   // empty cache
   msg ("Going to empty cache and reset stats");
-  reset_cache ();
+  flush_cache ();
+  reset_cache_stats ();
 
   // read first time
   msg ("Going to read file 1st time");
