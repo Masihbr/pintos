@@ -52,7 +52,7 @@ unsigned count_cache_hit (void);
 unsigned count_cache_miss (void);
 unsigned count_cache_read (void);
 unsigned count_cache_write (void);
-void reset_cache (void);
+void flush_cache (void);
 
 /* Homework 5, Part B. */
 void* sbrk (intptr_t increment);

@@ -214,7 +214,13 @@ count_cache_write (void)
 }
 
 void
-reset_cache (void)
+flush_cache (void)
 {
-  syscall0 (SYS_CACHE_RESET);
+  syscall0 (SYS_CACHE_FLUSH);
+}
+
+void
+reset_cache_stats (void)
+{
+  syscall0 (SYS_CACHE_RESET_STATS);
 }

@@ -38,7 +38,8 @@ struct lock lru_cache_list_lock; /* lock for Synchornization (multiple threads
                                     accessing lru_cache_list).*/
 
 void cache_init (void);
-void cache_reset (void);
+void cache_flush (void);
+void reset_cache_stats (void);
 void read_cache_block (block_sector_t sector_idx, off_t sector_ofs,
                        void *buffer, off_t bytes_read, int chunk_size);
 void write_cache_block (block_sector_t sector_idx, off_t sector_ofs,

@@ -36,7 +36,8 @@ enum
   SYS_CACHE_WRITE,
   SYS_CACHE_HIT,
   SYS_CACHE_MISS,
-  SYS_CACHE_RESET
+  SYS_CACHE_FLUSH,
+  SYS_CACHE_RESET_STATS
 };
 
 #endif /* lib/syscall-nr.h */

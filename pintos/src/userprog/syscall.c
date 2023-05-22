@@ -1,6 +1,6 @@
 #include "userprog/syscall.h"
-#include "filesys/filesys.h"
 #include "filesys/cache.h"
+#include "filesys/filesys.h"
 #include "lib/stdio.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
@@ -30,7 +30,8 @@ args_are_valid (uint32_t *args)
     case SYS_HALT:
     case SYS_CACHE_HIT:
     case SYS_CACHE_MISS:
-    case SYS_CACHE_RESET:
+    case SYS_CACHE_FLUSH:
+    case SYS_CACHE_RESET_STATS:
     case SYS_CACHE_READ:
     case SYS_CACHE_WRITE:
       break;
@@ -281,9 +282,13 @@ syscall_handler (struct intr_frame *f)
     {
       f->eax = get_cache_stats_instance ()->write;
     }
-  else if (args[0] == SYS_CACHE_RESET)
+  else if (args[0] == SYS_CACHE_FLUSH)
     {
-      cache_reset ();
+      cache_flush ();
+    }
+  else if (args[0] == SYS_CACHE_RESET_STATS)
+    {
+      reset_cache_stats ();
     }
   else
     {

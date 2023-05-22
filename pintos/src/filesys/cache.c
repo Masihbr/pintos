@@ -29,9 +29,9 @@ cache_init (void)
     }
 }
 
-/* reset stats and empty cache */
+/* empty cache */
 void
-cache_reset (void)
+cache_flush (void)
 {
   struct list_elem *e;
   cache_block_t *cache_block;
@@ -50,7 +50,11 @@ cache_reset (void)
       cache_block->sector = NULL;
     }
   lock_release (&lru_cache_list_lock);
-  /* reset stats */
+}
+
+/* reset cache stats */
+void 
+reset_cache_stats (void) {
   get_cache_stats_instance ()->hit = 0;
   get_cache_stats_instance ()->miss = 0;
   get_cache_stats_instance ()->read = 0;
@@ -81,14 +85,16 @@ find_cache_block (block_sector_t sector_idx, bool do_read)
   /* cache miss */
   get_cache_stats_instance ()->miss++;
   cache_block = list_entry (list_back (&lru_cache_list), cache_block_t, elem);
-  if (cache_block->dirty) {
+  if (cache_block->dirty)
+    {
       get_cache_stats_instance ()->write++;
       block_write (fs_device, cache_block->sector, cache_block->data);
-  }
-  if (do_read) {
-    get_cache_stats_instance ()->read++;
-    block_read (fs_device, sector_idx, cache_block->data);
-  }
+    }
+  if (do_read)
+    {
+      get_cache_stats_instance ()->read++;
+      block_read (fs_device, sector_idx, cache_block->data);
+    }
   cache_block->sector = sector_idx;
   cache_block->dirty = false;
   list_remove (&(cache_block->elem));
