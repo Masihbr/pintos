@@ -38,8 +38,9 @@ void
 filesys_done (void)
 {
   free_map_close ();
+  cache_flush ();
 }
-
+
 /* Creates a file named NAME with the given INITIAL_SIZE.
    Returns true if successful, false otherwise.
    Fails if a file named NAME already exists,
