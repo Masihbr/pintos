@@ -29,7 +29,7 @@ struct dir_entry
 bool
 dir_create (block_sector_t sector, size_t entry_cnt)
 {
-  return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
+  return inode_create (sector, entry_cnt * sizeof (struct dir_entry), true);
 }
 
 /* Extracts a file name part from *SRCP into PART, and updates *SRCP so that
@@ -71,23 +71,21 @@ seperate_path_parent (char *full_path, char *parent_name, char *file_name)
 
   // "012/45"
   int i;
-  for (i = strlen (full_path); i >= 0; i--)
+  for (i = strlen (full_path) - 1; i >= 0; i--)
     {
       if (full_path[i] == '/')
         break;
     }
-  // if no '/' found, file_name = full_path, dir = current
+  // if no '/' found, file_name = full_path
   if (i == -1)
-    {
       memcpy (file_name, full_path, strlen (full_path) + 1);
-      parent_name[0] = NULL;
-    }
   else
     {
       memcpy (parent_name, full_path, i);
       memcpy (file_name, full_path + i + 1, strlen (full_path) - i - 1);
       parent_name[i] = file_name[strlen (full_path) - i] = NULL;
     }
+  // return true;
 }
 
 /* Opens and returns the directory for the given INODE, of which
@@ -209,8 +207,7 @@ lookup (const struct dir *dir, const char *name,
    On success, sets *INODE to an inode for the file, otherwise to
    a null pointer.  The caller must close *INODE. */
 bool
-dir_lookup (const struct dir *dir, const char *name,
-            struct inode **inode)
+dir_lookup (const struct dir *dir, const char *name, struct inode **inode)
 {
   struct dir_entry e;
 
@@ -219,6 +216,13 @@ dir_lookup (const struct dir *dir, const char *name,
 
   if (lookup (dir, name, &e, NULL))
     *inode = inode_open (e.inode_sector);
+  else if (strcmp (name, ".") == 0)
+    *inode = inode_reopen (dir->inode);
+  else if (strcmp (name, "..") == 0)
+    {
+      inode_read_at (dir->inode, &e, sizeof (e), 0);
+      *inode = inode_open (e.inode_sector);
+    }
   else
     *inode = NULL;
 
@@ -232,7 +236,8 @@ dir_lookup (const struct dir *dir, const char *name,
    Fails if NAME is invalid (i.e. too long) or a disk or memory
    error occurs. */
 bool
-dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
+dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,
+         bool type_is_dir)
 {
   struct dir_entry e;
   off_t ofs;
@@ -248,6 +253,24 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
   /* Check that NAME is not in use. */
   if (lookup (dir, name, NULL, NULL))
     goto done;
+
+  if (type_is_dir)
+    {
+      struct dir *cur_dir = dir_open (inode_open (inode_sector));
+      if (!cur_dir)
+        goto done;
+
+      struct dir_entry dir_e;
+      dir_e.in_use = false;
+      dir_e.inode_sector = inode_get_inumber (dir_get_inode (dir));
+
+      bool write = inode_write_at (cur_dir->inode, &dir_e, sizeof (dir_e), 0)
+                     == sizeof (dir_e);
+
+      dir_close (cur_dir);
+      if (!write)
+        goto done;
+    }
 
   /* Set OFS to offset of free slot.
      If there are no free slots, then it will be set to the
@@ -267,7 +290,7 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
   e.inode_sector = inode_sector;
   success = inode_write_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
 
- done:
+done:
   return success;
 }
 

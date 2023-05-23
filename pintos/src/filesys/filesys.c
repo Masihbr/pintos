@@ -47,15 +47,19 @@ filesys_done (void)
 bool
 filesys_create (const char *name, off_t initial_size, bool type_is_dir)
 {
+  printf("filesys_create\n");
   block_sector_t inode_sector = 0;
-  char parent_name[NAME_MAX + 1], file_name[NAME_MAX + 1];
+  char parent_name[strlen (name) + 1], file_name[strlen (name) + 1];
   parent_name[0] = file_name[0] = NULL;
-  bool seperate_result = seperate_path_parent(name, parent_name, file_name);
+  bool seperate_result = seperate_path_parent (name, parent_name, file_name);
+  printf("filesys_create: full_path=%s, parent_name=%s, file_name=%s\n", name, parent_name, file_name);
   struct dir *dir = dir_open_path (parent_name);
-  bool success = (dir != NULL
+  bool success = (seperate_result
+                  && dir
                   && free_map_allocate (1, &inode_sector)
-                  && inode_create (inode_sector, initial_size)
-                  && dir_add (dir, name, inode_sector));
+                  && inode_create (inode_sector, initial_size, type_is_dir)
+                  && dir_add (dir, file_name, inode_sector, type_is_dir));
+  printf("filesys_create: success = %d\n", success);
   if (!success && inode_sector != 0)
     free_map_release (inode_sector, 1);
   dir_close (dir);
@@ -71,12 +75,25 @@ filesys_create (const char *name, off_t initial_size, bool type_is_dir)
 struct file *
 filesys_open (const char *name)
 {
-  struct dir *dir = dir_open_root ();
+  printf("filesys_open\n");
+  char parent_name[strlen (name) + 1], file_name[NAME_MAX + 1];
+  parent_name[0] = file_name[0] = NULL;
+  bool seperate_result = seperate_path_parent (name, parent_name, file_name);
+  printf("filesys_open: seperate_path_parent full_path=%s, parent_name=%s, file_name=%s\n", name, parent_name, file_name);
+  struct dir *dir = dir_open_path (parent_name);
   struct inode *inode = NULL;
+  printf("filesys_open: %p %d\n", dir, seperate_result);
 
-  if (dir != NULL)
-    dir_lookup (dir, name, &inode);
-  dir_close (dir);
+  if (!dir || !seperate_result)
+    return NULL;
+
+  if (strlen (file_name) == 0)
+    inode = dir_get_inode (dir);
+  else
+    {
+      dir_lookup (dir, file_name, &inode);
+      dir_close (dir);
+    }
 
   return file_open (inode);
 }
