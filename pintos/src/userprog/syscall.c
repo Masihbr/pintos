@@ -1,5 +1,6 @@
 #include "userprog/syscall.h"
 #include "filesys/cache.h"
+#include "filesys/directory.h"
 #include "filesys/filesys.h"
 #include "lib/stdio.h"
 #include "threads/interrupt.h"
@@ -44,6 +45,7 @@ args_are_valid (uint32_t *args)
     case SYS_FILESIZE:
     case SYS_TELL:
     case SYS_CLOSE:
+    case SYS_MKDIR:
       if (!is_block_valid (args + 1, sizeof (uint32_t)))
         return false;
 
@@ -172,7 +174,7 @@ syscall_handler (struct intr_frame *f)
       else
         {
           lock_acquire (&fs_lock);
-          f->eax = filesys_create (file_name, initial_size); /* retrun val */
+          f->eax = filesys_create (file_name, initial_size, false); /* retrun val */
           lock_release (&fs_lock);
         }
     }
@@ -264,6 +266,13 @@ syscall_handler (struct intr_frame *f)
       lock_acquire (&fs_lock);
       f->eax = file ? file_tell (file->f) : -1;
       lock_release (&fs_lock);
+    }
+
+  else if (args[0] == SYS_MKDIR)
+    {
+      char *path = args[1];
+      f->eax = strlen(path) > 0 
+                && filesys_create(path, 0, true);
     }
 
   else if (args[0] == SYS_CACHE_HIT)

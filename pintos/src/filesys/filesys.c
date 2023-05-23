@@ -45,10 +45,13 @@ filesys_done (void)
    Fails if a file named NAME already exists,
    or if internal memory allocation fails. */
 bool
-filesys_create (const char *name, off_t initial_size)
+filesys_create (const char *name, off_t initial_size, bool type_is_dir)
 {
   block_sector_t inode_sector = 0;
-  struct dir *dir = dir_open_root ();
+  char parent_name[NAME_MAX + 1], file_name[NAME_MAX + 1];
+  parent_name[0] = file_name[0] = NULL;
+  bool seperate_result = seperate_path_parent(name, parent_name, file_name);
+  struct dir *dir = dir_open_path (parent_name);
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
                   && inode_create (inode_sector, initial_size)

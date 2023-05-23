@@ -118,6 +118,8 @@ struct thread
     struct list file_descs;             /* The list of this thread's File Descriptors. */
     int next_fd;                        /* The next fd */
     struct file *executable_file;       /* The executable file. */
+    
+    struct dir *cwd;                    /* Current Working Directory. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

@@ -406,6 +406,7 @@ static void
 locate_block_device (enum block_type role, const char *name)
 {
   struct block *block = NULL;
+  printf("locate_block_device name=%s\n",name);
 
   if (name != NULL)
     {

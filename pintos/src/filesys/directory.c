@@ -4,6 +4,7 @@
 #include <list.h>
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
+#include "threads/thread.h"
 #include "threads/synch.h"
 #include "threads/malloc.h"
 
@@ -31,6 +32,64 @@ dir_create (block_sector_t sector, size_t entry_cnt)
   return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
 }
 
+/* Extracts a file name part from *SRCP into PART, and updates *SRCP so that
+   the next call will return the next file name part. Returns 1 if successful,
+   0 at end of string, -1 for a too-long file name part. */
+static int
+get_next_part (char part[NAME_MAX + 1], const char **srcp)
+{
+  const char *src = *srcp;
+  char *dst = part;
+
+  /* Skip leading slashes.  If it's all slashes, we're done. */
+  while (*src == '/')
+    src++;
+  if (*src == '\0')
+    return 0;
+
+  /* Copy up to NAME_MAX character from SRC to DST.  Add null terminator. */
+  while (*src != '/' && *src != '\0')
+    {
+      if (dst < part + NAME_MAX)
+        *dst++ = *src;
+      else
+        return -1;
+      src++;
+    }
+  *dst = '\0';
+
+  /* Advance source pointer. */
+  *srcp = src;
+  return 1;
+}
+
+bool
+seperate_path_parent (char *full_path, char *parent_name, char *file_name)
+{
+  if (!full_path || !full_path[0] || strlen(full_path) > NAME_MAX)
+    return false;
+
+  // "012/45"
+  int i;
+  for (i = strlen (full_path); i >= 0; i--)
+    {
+      if (full_path[i] == '/')
+        break;
+    }
+  // if no '/' found, file_name = full_path, dir = current
+  if (i == -1)
+    {
+      memcpy (file_name, full_path, strlen (full_path) + 1);
+      parent_name[0] = NULL;
+    }
+  else
+    {
+      memcpy (parent_name, full_path, i);
+      memcpy (file_name, full_path + i + 1, strlen (full_path) - i - 1);
+      parent_name[i] = file_name[strlen (full_path) - i] = NULL;
+    }
+}
+
 /* Opens and returns the directory for the given INODE, of which
    it takes ownership.  Returns a null pointer on failure. */
 struct dir *
@@ -49,6 +108,38 @@ dir_open (struct inode *inode)
       free (dir);
       return NULL;
     }
+}
+
+/* Opens and returns the directory for the given INODE, of which
+   it takes ownership.  Returns a null pointer on failure. */
+struct dir *
+dir_open_path (char *path)
+{
+  struct dir *current = thread_current ()->cwd;
+  if (!current)
+    current = dir_open_root ();
+
+  char token[NAME_MAX + 1];
+
+  for (struct dir *next; get_next_part (token, &path);)
+    {
+      struct inode *inode;
+      if (!dir_lookup (current, token, &inode))
+        {
+          dir_close (current);
+          return NULL;
+        }
+      next = dir_open (inode);
+      if (!next)
+        {
+          dir_close (current);
+          return NULL;
+        }
+      dir_close (current);
+      current = next;
+      dir_close (next);
+    }
+  return current;
 }
 
 /* Opens the root directory and returns a directory for it.
