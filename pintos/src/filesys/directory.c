@@ -94,7 +94,7 @@ seperate_path_parent (char *full_path, char *parent_name, char *file_name)
   else
     {
       memcpy (parent_name, full_path, i);
-      memcpy (file_name, full_path + i + 1, strlen (full_path) - i - 1);
+      memcpy (file_name, full_path + i + 1, strlen (full_path) - i);
       parent_name[i] = file_name[strlen (full_path) - i] = NULL;
     }
   return true;
