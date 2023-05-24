@@ -45,6 +45,7 @@ args_are_valid (uint32_t *args)
     case SYS_FILESIZE:
     case SYS_TELL:
     case SYS_CLOSE:
+    case SYS_CHDIR:
     case SYS_MKDIR:
     case SYS_ISDIR:
     case SYS_INUMBER:
@@ -270,6 +271,12 @@ syscall_handler (struct intr_frame *f)
       lock_acquire (&fs_lock);
       f->eax = file ? file_tell (file->f) : -1;
       lock_release (&fs_lock);
+    }
+
+  else if (args[0] == SYS_CHDIR)
+    {
+      char *path = args[1];
+      f->eax = thread_chdir(path);
     }
 
   else if (args[0] == SYS_MKDIR)

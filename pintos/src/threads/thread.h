@@ -146,6 +146,7 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 struct thread *find_thread (tid_t tid);
 struct file_t *find_file (int fd);
 struct status_t *find_status (tid_t tid);
+bool thread_chdir (char *path);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
