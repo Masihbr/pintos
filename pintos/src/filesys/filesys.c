@@ -105,13 +105,24 @@ filesys_open (const char *name)
 bool
 filesys_remove (const char *name)
 {
-  struct dir *dir = dir_open_root ();
-  bool success = dir != NULL && dir_remove (dir, name);
+  printf("filesys_remove\n");
+  char parent_name[strlen (name) + 1], file_name[NAME_MAX + 1];
+  parent_name[0] = file_name[0] = NULL;
+  seperate_path_parent (name, parent_name, file_name);
+  printf("filesys_remove: full_path=%s, parent_name=%s, file_name=%s\n", name, parent_name, file_name);
+  struct dir *dir = dir_open_path (parent_name);
+  bool success = !dir && dir_remove (dir, file_name);
   dir_close (dir);
 
   return success;
 }
-
+
+bool
+filesys_is_dir (struct file *file)
+{
+  return file_is_dir(file);
+}
+
 /* Formats the file system. */
 static void
 do_format (void)

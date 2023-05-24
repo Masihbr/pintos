@@ -90,7 +90,7 @@ inode_create (block_sector_t sector, off_t length, bool type_is_dir)
       size_t sectors = bytes_to_sectors (length);
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
-      disk_inode->type_is_dir = type_is_dir;
+      disk_inode->type_is_dir = type_is_dir ? 1 : 0;
       if (free_map_allocate (sectors, &disk_inode->start))
         {
           block_write (fs_device, sector, disk_inode);
@@ -376,4 +376,10 @@ off_t
 inode_length (const struct inode *inode)
 {
   return inode->data.length;
+}
+
+int
+inode_is_dir (struct inode *inode)
+{
+  return inode->data.type_is_dir;
 }

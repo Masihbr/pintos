@@ -32,6 +32,12 @@ dir_create (block_sector_t sector, size_t entry_cnt)
   return inode_create (sector, entry_cnt * sizeof (struct dir_entry), true);
 }
 
+bool
+is_abosulte_path (char *path)
+{
+  return path[0] == '/';
+}
+
 /* Extracts a file name part from *SRCP into PART, and updates *SRCP so that
    the next call will return the next file name part. Returns 1 if successful,
    0 at end of string, -1 for a too-long file name part. */

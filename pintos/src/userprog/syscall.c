@@ -46,11 +46,13 @@ args_are_valid (uint32_t *args)
     case SYS_TELL:
     case SYS_CLOSE:
     case SYS_MKDIR:
+    case SYS_ISDIR:
       if (!is_block_valid (args + 1, sizeof (uint32_t)))
         return false;
 
     case SYS_CREATE:
     case SYS_SEEK:
+    case SYS_READDIR:
       if (!is_block_valid (args + 2, sizeof (uint32_t)))
         return false;
 
@@ -107,6 +109,7 @@ syscall_handler (struct intr_frame *f)
   else if (args[0] == SYS_EXEC)
     {
       char *cmd = args[1];
+      // if (!is_abosulte_path)
       if (!is_cmd_valid (cmd))
         exit (f, -1);
       else
@@ -273,6 +276,20 @@ syscall_handler (struct intr_frame *f)
       char *path = args[1];
       f->eax = strlen(path) > 0 
                 && filesys_create(path, 0, true);
+    }
+
+  else if (args[0] == SYS_READDIR)
+    {
+      int fd = args[1];
+      char *path = args[2];
+      // f->eax = strlen(path) > 0 
+      //           && filesys_create(path, 0, true);
+    }
+
+  else if (args[0] == SYS_ISDIR)
+    {
+      int fd = args[1];
+      f->eax = filesys_is_dir (find_file (fd));
     }
 
   else if (args[0] == SYS_CACHE_HIT)
