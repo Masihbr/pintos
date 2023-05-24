@@ -91,7 +91,7 @@ seperate_path_parent (char *full_path, char *parent_name, char *file_name)
       memcpy (file_name, full_path + i + 1, strlen (full_path) - i - 1);
       parent_name[i] = file_name[strlen (full_path) - i] = NULL;
     }
-  // return true;
+  return true;
 }
 
 /* Opens and returns the directory for the given INODE, of which
