@@ -302,10 +302,10 @@ syscall_handler (struct intr_frame *f)
       int fd = args[1];
       char *buf = args[2];
       struct file_t *file = find_file (fd);
-      if (file == NULL)
-        f->eax = false;
+      if (!file || !filesys_is_dir (file->f))
+        exit(f, -1);
       else
-        f->eax = file && filesys_is_dir (file->f) && next_dir_entry (file, buf);
+        f->eax = next_dir_entry (file->f, buf);
     }
 
   else if (args[0] == SYS_ISDIR)
