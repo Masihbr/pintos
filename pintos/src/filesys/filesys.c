@@ -103,7 +103,7 @@ filesys_remove (const char *name)
   parent_name[0] = file_name[0] = NULL;
   seperate_path_parent (name, parent_name, file_name);
   struct dir *dir = dir_open_path (parent_name);
-  bool success = !dir && dir_remove (dir, file_name);
+  bool success = dir && dir_remove (dir, file_name);
   dir_close (dir);
 
   return success;
