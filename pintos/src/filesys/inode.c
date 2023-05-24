@@ -394,7 +394,9 @@ inode_length (const struct inode *inode)
 {
   ASSERT (inode != NULL);
   struct inode_disk *disk_inode = get_inode_disk (inode);
-  return disk_inode->length;   
+  off_t len = disk_inode->length;
+  free (disk_inode);
+  return len;
 }
 
 static bool
@@ -500,8 +502,10 @@ inode_disk_deallocate (struct inode *inode)
       return true;
     }
 
-  if (!deallocate_indirect (disk_inode->indirect_blocks, num_sectors_to_allocate))
+  if (!deallocate_indirect (disk_inode->indirect_blocks, num_sectors_to_allocate)) {
+    free (disk_inode);
     return false;
+  }
   i = num_sectors_to_allocate < INDIRECT_BLOCKS_COUNT ? num_sectors_to_allocate : INDIRECT_BLOCKS_COUNT;
   num_sectors_to_allocate -= i;
   if (num_sectors_to_allocate == 0)
@@ -513,8 +517,10 @@ inode_disk_deallocate (struct inode *inode)
   block_sector_t blocks[INDIRECT_BLOCKS_COUNT];
   read_cache_block (disk_inode->doubly_indirect_blocks, 0, &blocks, 0, BLOCK_SECTOR_SIZE);
 
-  if (num_sectors_to_allocate > INDIRECT_BLOCKS_COUNT * INDIRECT_BLOCKS_COUNT)
+  if (num_sectors_to_allocate > INDIRECT_BLOCKS_COUNT * INDIRECT_BLOCKS_COUNT) {
+    free(disk_inode);
     return false;
+  }
 
   size_t no_blocks = DIV_ROUND_UP (num_sectors_to_allocate, INDIRECT_BLOCKS_COUNT);
   for (i = 0; i < no_blocks; i++)
@@ -547,7 +553,10 @@ inode_is_dir (struct inode *inode)
 {
   // printf ("inode_is_dir: inode=%p get_inode_disk (inode)=%p get_inode_disk(inode)->type_is_dir=%d\n", inode, get_inode_disk (inode),
   //         get_inode_disk (inode)->type_is_dir);
-  return get_inode_disk (inode)->type_is_dir;
+  struct inode_disk *inode_disk = get_inode_disk (inode);
+  bool is_dir = inode_disk->type_is_dir;
+  free (inode_disk);
+  return is_dir;
 }
 
 bool
