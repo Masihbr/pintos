@@ -293,6 +293,12 @@ syscall_handler (struct intr_frame *f)
       f->eax = filesys_is_dir (find_file (fd));
     }
 
+  else if (args[0] == SYS_INUMBER)
+    {
+      int fd = args[1];
+      f->eax = file_get_inumber(find_file(fd));
+    }
+
   else if (args[0] == SYS_CACHE_HIT)
     {
       f->eax = get_cache_stats_instance ()->hit;
