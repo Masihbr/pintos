@@ -457,8 +457,6 @@ inode_disk_allocate (struct inode_disk *disk_inode, off_t length)
   if (num_sectors_to_allocate <= INDIRECT_BLOCKS_COUNT * INDIRECT_BLOCKS_COUNT)
     return true;
   return false;
-  ASSERT (num_sectors_to_allocate == 0);
-  return false;
 }
 
 bool 
