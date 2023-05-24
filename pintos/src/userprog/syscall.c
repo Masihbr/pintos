@@ -3,6 +3,7 @@
 #include "filesys/directory.h"
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
+#include "filesys/file.h"
 #include "lib/stdio.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
@@ -134,15 +135,16 @@ syscall_handler (struct intr_frame *f)
         putbuf (buffer, (f->eax = size));
       else
         {
-          struct file_t *file;
-          file = find_file (fd);
-          if (filesys_is_dir (file->f))
+          struct file_t *file = find_file (fd);
+          if (file == NULL)
+            exit (f, -1);
+          else if (filesys_is_dir (file->f))
             f->eax = -1;
           else
             {
-              file_aquire_lock(file->f);
+              file_aquire_lock (file->f);
               f->eax = file ? file_write (file->f, buffer, size) : -1;
-              file_release_lock(file->f);
+              file_release_lock (file->f);
             }
         }
     }
@@ -166,10 +168,15 @@ syscall_handler (struct intr_frame *f)
         }
       else
         {
-          struct file_t *file = find_file (fd)->f;
-          file_aquire_lock(file);
-          f->eax = file ? file_read (file, buffer, size) : -1;
-          file_release_lock(file);
+          struct file_t *file = find_file (fd);
+          if (file == NULL)
+            exit (f, -1);
+          else
+            {
+              file_aquire_lock (file->f);
+              f->eax = file ? file_read (file->f, buffer, size) : -1;
+              file_release_lock (file->f);
+            }
         }
     }
 
@@ -230,7 +237,7 @@ syscall_handler (struct intr_frame *f)
         exit (f, -1);
       else
         {
-          f->eax = file_close (file->f);
+          file_close (file->f);
           list_remove (&file->elem);
         }
     }
@@ -239,9 +246,14 @@ syscall_handler (struct intr_frame *f)
     {
       int fd = args[1];
       struct file_t *file = find_file (fd);
-      file_aquire_lock (file->f);
-      f->eax = file ? file_length (file->f) : -1;
-      file_release_lock (file->f);
+      if (file == NULL)
+        exit (f, -1);
+      else
+        {
+          file_aquire_lock (file->f);
+          f->eax = file ? file_length (file->f) : -1;
+          file_release_lock (file->f);
+        }
     }
 
   else if (args[0] == SYS_SEEK)
@@ -249,7 +261,9 @@ syscall_handler (struct intr_frame *f)
       int fd = args[1];
       off_t pos = args[2];
       struct file_t *file = find_file (fd);
-      if (file != NULL)
+      if (file == NULL)
+        exit (f, -1);
+      else
         {
           file_aquire_lock (file->f);
           file_seek (file->f, pos);
@@ -261,43 +275,57 @@ syscall_handler (struct intr_frame *f)
     {
       int fd = args[1];
       struct file_t *file = find_file (fd);
-      file_aquire_lock (file->f);
-      f->eax = file ? file_tell (file->f) : -1;
-      file_release_lock (file->f);
+      if (file == NULL)
+        exit (f, -1);
+      else
+        {
+          file_aquire_lock (file->f);
+          f->eax = file ? file_tell (file->f) : -1;
+          file_release_lock (file->f);
+        }
     }
 
   else if (args[0] == SYS_CHDIR)
     {
       char *path = args[1];
-      f->eax = thread_chdir(path);
+      f->eax = thread_chdir (path);
     }
 
   else if (args[0] == SYS_MKDIR)
     {
       char *path = args[1];
-      f->eax = strlen(path) > 0 
-                && filesys_create(path, 0, true);
+      f->eax = strlen (path) > 0 && filesys_create (path, 0, true);
     }
 
   else if (args[0] == SYS_READDIR)
     {
       int fd = args[1];
       char *buf = args[2];
-      struct file *file = find_file (fd);
-
-      f->eax = file && filesys_is_dir(file) && next_dir_entry(file, buf);
+      struct file_t *file = find_file (fd);
+      if (file == NULL)
+        f->eax = false;
+      else
+        f->eax = file && filesys_is_dir (file->f) && next_dir_entry (file, buf);
     }
 
   else if (args[0] == SYS_ISDIR)
     {
       int fd = args[1];
-      f->eax = filesys_is_dir (find_file (fd));
+      struct file_t *file = find_file (fd);
+      if (file == NULL)
+        f->eax = false;
+      else
+        f->eax = filesys_is_dir (file->f);
     }
 
   else if (args[0] == SYS_INUMBER)
     {
       int fd = args[1];
-      f->eax = file_get_inumber(find_file(fd));
+      struct file_t *file = find_file (fd);
+      if (file == NULL)
+        f->eax = 0;
+      else
+        f->eax = file_get_inumber (file->f);
     }
 
   else if (args[0] == SYS_CACHE_HIT)
