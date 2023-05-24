@@ -502,8 +502,10 @@ inode_disk_deallocate (struct inode *inode)
       return true;
     }
 
-  if (!deallocate_indirect (disk_inode->indirect_blocks, num_sectors_to_allocate))
+  if (!deallocate_indirect (disk_inode->indirect_blocks, num_sectors_to_allocate)) {
+    free (disk_inode);
     return false;
+  }
   i = num_sectors_to_allocate < INDIRECT_BLOCKS_COUNT ? num_sectors_to_allocate : INDIRECT_BLOCKS_COUNT;
   num_sectors_to_allocate -= i;
   if (num_sectors_to_allocate == 0)
