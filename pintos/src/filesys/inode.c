@@ -264,6 +264,7 @@ inode_remove (struct inode *inode)
         {
           struct file *file = filesys_open (name);
           inode_remove (file_get_inode (file));
+          file_close(file);
         }
     }
 }

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <list.h>
 #include "filesys/filesys.h"
+#include "filesys/file.h"
 #include "filesys/inode.h"
 #include "threads/thread.h"
 #include "threads/synch.h"
@@ -93,7 +94,7 @@ seperate_path_parent (char *full_path, char *parent_name, char *file_name)
   else
     {
       memcpy (parent_name, full_path, i);
-      memcpy (file_name, full_path + i + 1, strlen (full_path) - i - 1);
+      memcpy (file_name, full_path + i + 1, strlen (full_path) - i);
       parent_name[i] = file_name[strlen (full_path) - i] = NULL;
     }
   return true;
@@ -345,10 +346,26 @@ dir_remove (struct dir *dir, const char *name)
   inode = inode_open (e.inode_sector);
   if (inode == NULL)
     goto done;
-  if (inode_is_dir (inode) && thread_current ()->cwd->inode == inode)
+  
+  /* If the dir to be deleted is or has cwd. */
+  if (inode_is_dir (inode) && thread_current ()->cwd)
     {
-      success = false;
-      goto done;
+      bool cwd_is_child = thread_current ()->cwd->inode == inode;
+      // printf ("dir_remove: cwd_is_child=%d\n", cwd_is_child);
+      char name[NAME_MAX + 1];
+      while (!cwd_is_child && dir_readdir (dir, name))
+        {
+          struct file *file = filesys_open (name);
+          cwd_is_child
+              |= filesys_is_dir (file)
+                 && file_get_inode (file) == thread_current ()->cwd->inode;
+          // printf ("dir_remove: cwd_is_child=%d\n", cwd_is_child);
+        }
+      if (cwd_is_child)
+        {
+          success = false;
+          goto done;
+        }
     }
 
   /* Erase directory entry. */
