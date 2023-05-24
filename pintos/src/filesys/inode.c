@@ -57,11 +57,6 @@ struct inode
     struct lock ilock;                  /* Inode lock. */
   };
 
-typedef struct indirect_block_sector
-  {
-    block_sector_t blocks[INDIRECT_BLOCKS_COUNT];
-  } indirect_block_sector_t;
-
 struct inode_disk *
 get_inode_disk (const struct inode *inode)
 {
@@ -79,48 +74,48 @@ static block_sector_t
 byte_to_sector (const struct inode *inode, off_t pos)
 {
   ASSERT (inode != NULL);
-  block_sector_t result = -1;
+  block_sector_t sector;
   struct inode_disk *disk_inode = get_inode_disk (inode);
 
   if (pos >= disk_inode->length)
-    goto b2s_end;
+    {
+      free (disk_inode);
+      return -1;
+    }
 
-  off_t target_blk = pos / BLOCK_SECTOR_SIZE;
+  off_t block_index = pos / BLOCK_SECTOR_SIZE;
 
   /* direct block */
-  if (target_blk < DIRECT_BLOCKS_COUNT)
+  if (block_index < DIRECT_BLOCKS_COUNT)
     {
-      result = disk_inode->direct_blocks[target_blk];
-      goto b2s_end;
+      sector = disk_inode->direct_blocks[block_index];
+      free (disk_inode);
+      return sector;
     }
 
   /* indirect block */
-  if (target_blk < DIRECT_BLOCKS_COUNT + INDIRECT_BLOCKS_COUNT)
+  else if (block_index < DIRECT_BLOCKS_COUNT + INDIRECT_BLOCKS_COUNT)
     {
-      target_blk -= DIRECT_BLOCKS_COUNT;
-
-      indirect_block_sector_t ib;
-      read_cache_block (disk_inode->indirect_blocks, 0, &ib, 0, BLOCK_SECTOR_SIZE);
-      result = ib.blocks[target_blk];
-      goto b2s_end;
+      block_sector_t blocks[INDIRECT_BLOCKS_COUNT];
+      read_cache_block (disk_inode->indirect_blocks, 0, &blocks, 0, BLOCK_SECTOR_SIZE);
+      sector = blocks[block_index - DIRECT_BLOCKS_COUNT];
+      free (disk_inode);
+      return sector;
     }
 
   /* double indirect block */
-  target_blk -= (DIRECT_BLOCKS_COUNT + INDIRECT_BLOCKS_COUNT);
-  indirect_block_sector_t ib;
-
-  /* get double indirect and indirect block index */
-  int did_target_blk = target_blk / INDIRECT_BLOCKS_COUNT;
-  int id_target_blk = target_blk % INDIRECT_BLOCKS_COUNT;
-
-  /* Read double indirect block, then indirect block */
-  read_cache_block (disk_inode->doubly_indirect_blocks, 0, &ib, 0, BLOCK_SECTOR_SIZE);
-  read_cache_block (ib.blocks[did_target_blk], 0, &ib, 0, BLOCK_SECTOR_SIZE);
-  result = ib.blocks[id_target_blk];
-
-b2s_end:
-  free (disk_inode);
-  return result;
+  else
+    {
+      block_index -= (DIRECT_BLOCKS_COUNT + INDIRECT_BLOCKS_COUNT);
+      block_sector_t blocks[INDIRECT_BLOCKS_COUNT];
+      int double_indirect_block_index = block_index / INDIRECT_BLOCKS_COUNT;
+      int indirect_block_index = block_index % INDIRECT_BLOCKS_COUNT;
+      read_cache_block (disk_inode->doubly_indirect_blocks, 0, &blocks, 0, BLOCK_SECTOR_SIZE);
+      read_cache_block (blocks[double_indirect_block_index], 0, &blocks, 0, BLOCK_SECTOR_SIZE);
+      sector = blocks[indirect_block_index];
+      free (disk_inode);
+      return sector;
+    }
 }
 
 /* List of open inodes, so that opening a single inode twice
