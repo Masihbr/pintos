@@ -136,8 +136,8 @@ syscall_handler (struct intr_frame *f)
       else
         {
           struct file_t *file;
-          printf("filesys_is_dir (file = find_file (fd)) = %d\n", filesys_is_dir (file = find_file (fd)));
-          if (filesys_is_dir (file = find_file (fd)))
+          file = find_file (fd);
+          if (filesys_is_dir (file->f))
             f->eax = -1;
           else
             {
