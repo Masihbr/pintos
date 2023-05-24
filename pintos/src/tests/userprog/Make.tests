@@ -3,6 +3,7 @@
 tests/%.output: FILESYSSOURCE = --filesys-size=2
 tests/%.output: PUTFILES = $(filter-out kernel.bin loader.bin, $^)
 
+# tests/userprog_TESTS =
 tests/userprog_TESTS = $(addprefix tests/userprog/,do-nothing           \
 do-stack-align args-none args-single args-multiple args-many            \
 args-dbl-space sc-bad-sp sc-bad-arg sc-boundary sc-boundary-2           \
