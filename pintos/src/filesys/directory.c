@@ -74,6 +74,11 @@ seperate_path_parent (char *full_path, char *parent_name, char *file_name)
 {
   if (!full_path || !full_path[0] || strlen(full_path) > NAME_MAX)
     return false;
+  if (full_path[0] == '/' && full_path[1] == NULL) {
+    parent_name = "/";
+    file_name = "";
+    return true;
+  }
 
   // "012/45"
   int i;
@@ -119,9 +124,11 @@ dir_open (struct inode *inode)
 struct dir *
 dir_open_path (char *path)
 {
-  struct dir *current = thread_current ()->cwd;
-  if (!current)
+  struct dir *current;
+  if (is_abosulte_path (path) || !thread_current ()->cwd)
     current = dir_open_root ();
+  else
+    current = thread_current ()->cwd;
 
   char token[NAME_MAX + 1];
 
@@ -234,6 +241,8 @@ dir_lookup (const struct dir *dir, const char *name, struct inode **inode)
       inode_read_at (dir->inode, &e, sizeof (e), 0);
       *inode = inode_open (e.inode_sector);
     }
+  else if (strlen (name) == 0)
+    *inode = dir->inode;
   else
     *inode = NULL;
 
@@ -257,7 +266,6 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
 
-  // printf("inode_aquire_lock(dir) %p %p\n", dir, dir_get_inode(dir));
   inode_aquire_lock (dir_get_inode (dir));
 
   /* Check NAME for validity. */
@@ -275,7 +283,6 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,
       if (!cur_dir)
         goto done;
 
-      // printf ("inode_aquire_lock(cur_dir)\n");
       inode_aquire_lock (dir_get_inode (cur_dir));
 
       struct dir_entry dir_e;
@@ -338,6 +345,11 @@ dir_remove (struct dir *dir, const char *name)
   inode = inode_open (e.inode_sector);
   if (inode == NULL)
     goto done;
+  if (inode_is_dir (inode) && thread_current ()->cwd->inode == inode)
+    {
+      success = false;
+      goto done;
+    }
 
   /* Erase directory entry. */
   e.in_use = false;

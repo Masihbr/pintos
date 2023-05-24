@@ -73,7 +73,6 @@ filesys_create (const char *name, off_t initial_size, bool type_is_dir)
 struct file *
 filesys_open (const char *name)
 {
-  // printf("filesys_open(%s)\n", name);
   char parent_name[strlen (name) + 1], file_name[NAME_MAX + 1];
   parent_name[0] = file_name[0] = NULL;
   bool seperate_result = seperate_path_parent (name, parent_name, file_name);
@@ -83,13 +82,9 @@ filesys_open (const char *name)
   if (!dir || !seperate_result)
     return NULL;
 
-  // inode_aquire_lock (dir_get_inode (dir));
   dir_lookup (dir, file_name, &inode);
   dir_close (dir);
-  struct file *file = file_open (inode);
-  // inode_release_lock (dir_get_inode (dir));
-
-  return file;
+  return file_open (inode);
 }
 
 /* Deletes the file named NAME.
