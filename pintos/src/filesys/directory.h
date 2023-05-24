@@ -16,7 +16,7 @@ struct inode;
 /* Opening and closing directories. */
 bool is_abosulte_path (char *path);
 bool dir_create (block_sector_t sector, size_t entry_cnt);
-bool seperate_path_parent (char *full_path, char *parent_name,
+bool separate_path_parent_from_filename (char *full_path, char *parent_name,
                            char *file_name);
 struct dir *dir_open_path (char *path);
 struct dir *dir_open (struct inode *);

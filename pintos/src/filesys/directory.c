@@ -1,29 +1,29 @@
 #include "filesys/directory.h"
+#include "filesys/file.h"
+#include "filesys/filesys.h"
+#include "filesys/inode.h"
+#include "threads/malloc.h"
+#include "threads/synch.h"
+#include "threads/thread.h"
+#include <list.h>
 #include <stdio.h>
 #include <string.h>
-#include <list.h>
-#include "filesys/filesys.h"
-#include "filesys/file.h"
-#include "filesys/inode.h"
-#include "threads/thread.h"
-#include "threads/synch.h"
-#include "threads/malloc.h"
 
 /* A directory. */
 struct dir
-  {
-    struct inode *inode;                /* Backing store. */
-    off_t pos;                          /* Current position. */
-    struct lock lock;                   /* Lock for dir modification. */
-  };
+{
+  struct inode *inode; /* Backing store. */
+  off_t pos;           /* Current position. */
+  struct lock lock;    /* Lock for dir modification. */
+};
 
 /* A single directory entry. */
 struct dir_entry
-  {
-    block_sector_t inode_sector;        /* Sector number of header. */
-    char name[NAME_MAX + 1];            /* Null terminated file name. */
-    bool in_use;                        /* In use or free? */
-  };
+{
+  block_sector_t inode_sector; /* Sector number of header. */
+  char name[NAME_MAX + 1];     /* Null terminated file name. */
+  bool in_use;                 /* In use or free? */
+};
 
 /* Creates a directory with space for ENTRY_CNT entries in the
    given SECTOR.  Returns true if successful, false on failure. */
@@ -71,32 +71,34 @@ get_next_part (char part[NAME_MAX + 1], const char **srcp)
 }
 
 bool
-seperate_path_parent (char *full_path, char *parent_name, char *file_name)
+separate_path_parent_from_filename (char *full_path, char *parent_name,
+                                    char *file_name)
 {
-  if (!full_path || !full_path[0] || strlen(full_path) > NAME_MAX)
+  if (!full_path || !full_path[0] || strlen (full_path) > NAME_MAX)
     return false;
-  if (full_path[0] == '/' && full_path[1] == NULL) {
-    parent_name = "/";
-    file_name = "";
-    return true;
-  }
 
-  // "012/45"
   int i;
   for (i = strlen (full_path) - 1; i >= 0; i--)
     {
       if (full_path[i] == '/')
-        break;
+        {
+          break;
+        }
     }
-  // if no '/' found, file_name = full_path
+
   if (i == -1)
+    {
       memcpy (file_name, full_path, strlen (full_path) + 1);
+      file_name[strlen (full_path) + 1] = '\0';
+    }
   else
     {
       memcpy (parent_name, full_path, i);
-      memcpy (file_name, full_path + i + 1, strlen (full_path) - i);
-      parent_name[i] = file_name[strlen (full_path) - i] = NULL;
+      parent_name[i] = '\0';
+      memcpy (file_name, full_path + i + 1, strlen (full_path) - i - 1);
+      file_name[strlen (full_path) - i - 1] = '\0';
     }
+
   return true;
 }
 
@@ -132,6 +134,7 @@ dir_open_path (char *path)
     current = thread_current ()->cwd;
 
   char token[NAME_MAX + 1];
+  *token = '\0';
 
   for (struct dir *next; get_next_part (token, &path);)
     {
@@ -149,7 +152,6 @@ dir_open_path (char *path)
         }
       dir_close (current);
       current = next;
-      dir_close (next);
     }
   if (inode_is_removed (current->inode))
     {
@@ -199,8 +201,8 @@ dir_get_inode (struct dir *dir)
    directory entry if OFSP is non-null.
    otherwise, returns false and ignores EP and OFSP. */
 static bool
-lookup (const struct dir *dir, const char *name,
-        struct dir_entry *ep, off_t *ofsp)
+lookup (const struct dir *dir, const char *name, struct dir_entry *ep,
+        off_t *ofsp)
 {
   struct dir_entry e;
   size_t ofs;
@@ -335,7 +337,7 @@ dir_remove (struct dir *dir, const char *name)
 
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
-  
+
   inode_aquire_lock (dir_get_inode (dir));
 
   /* Find directory entry. */
@@ -346,7 +348,7 @@ dir_remove (struct dir *dir, const char *name)
   inode = inode_open (e.inode_sector);
   if (inode == NULL)
     goto done;
-  
+
   /* If the dir to be deleted is or has cwd. */
   if (inode_is_dir (inode) && thread_current ()->cwd)
     {
@@ -377,7 +379,7 @@ dir_remove (struct dir *dir, const char *name)
   inode_remove (inode);
   success = true;
 
- done:
+done:
   inode_release_lock (dir_get_inode (dir));
   inode_close (inode);
   return success;

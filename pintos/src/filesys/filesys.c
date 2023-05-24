@@ -1,12 +1,12 @@
 #include "filesys/filesys.h"
-#include <debug.h>
-#include <stdio.h>
-#include <string.h>
+#include "filesys/cache.h"
+#include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/free-map.h"
 #include "filesys/inode.h"
-#include "filesys/cache.h"
-#include "filesys/directory.h"
+#include <debug.h>
+#include <stdio.h>
+#include <string.h>
 
 /* Partition that contains the file system. */
 struct block *fs_device;
@@ -52,7 +52,8 @@ filesys_create (const char *name, off_t initial_size, bool type_is_dir)
   block_sector_t inode_sector = 0;
   char parent_name[strlen (name) + 1], file_name[strlen (name) + 1];
   parent_name[0] = file_name[0] = NULL;
-  bool seperate_result = seperate_path_parent (name, parent_name, file_name);
+  bool seperate_result
+      = separate_path_parent_from_filename (name, parent_name, file_name);
   // printf("seperate_result(%s, %s, %s)\n", name, parent_name, file_name);
   struct dir *dir = dir_open_path (parent_name);
 
@@ -77,7 +78,8 @@ filesys_open (const char *name)
 {
   char parent_name[strlen (name) + 1], file_name[NAME_MAX + 1];
   parent_name[0] = file_name[0] = NULL;
-  bool seperate_result = seperate_path_parent (name, parent_name, file_name);
+  bool seperate_result
+      = separate_path_parent_from_filename (name, parent_name, file_name);
   struct dir *dir = dir_open_path (parent_name);
   struct inode *inode = NULL;
 
@@ -98,7 +100,7 @@ filesys_remove (const char *name)
 {
   char parent_name[strlen (name) + 1], file_name[NAME_MAX + 1];
   parent_name[0] = file_name[0] = NULL;
-  seperate_path_parent (name, parent_name, file_name);
+  separate_path_parent_from_filename (name, parent_name, file_name);
   struct dir *dir = dir_open_path (parent_name);
   bool success = dir && dir_remove (dir, file_name);
   dir_close (dir);
@@ -109,7 +111,7 @@ filesys_remove (const char *name)
 bool
 filesys_is_dir (struct file *file)
 {
-  return file_is_dir(file);
+  return file_is_dir (file);
 }
 
 /* Formats the file system. */
