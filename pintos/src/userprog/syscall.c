@@ -281,9 +281,10 @@ syscall_handler (struct intr_frame *f)
   else if (args[0] == SYS_READDIR)
     {
       int fd = args[1];
-      char *path = args[2];
-      // f->eax = strlen(path) > 0 
-      //           && filesys_create(path, 0, true);
+      char *buf = args[2];
+      struct file *file = find_file (fd);
+
+      f->eax = file && filesys_is_dir(file) && next_dir_entry(file, buf);
     }
 
   else if (args[0] == SYS_ISDIR)

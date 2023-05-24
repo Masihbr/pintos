@@ -143,6 +143,11 @@ dir_open_path (char *path)
       current = next;
       dir_close (next);
     }
+  if (inode_is_removed (current->inode))
+    {
+      dir_close (current);
+      return NULL;
+    }
   return current;
 }
 

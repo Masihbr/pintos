@@ -127,3 +127,9 @@ do_format (void)
   free_map_close ();
   printf ("done.\n");
 }
+
+bool
+next_dir_entry (struct file *file, char *buffer)
+{
+  return dir_readdir(dir_open(file_get_inode(file)), buffer);
+}

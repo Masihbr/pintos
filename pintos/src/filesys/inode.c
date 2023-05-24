@@ -3,6 +3,8 @@
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
 #include "filesys/cache.h"
+#include "filesys/directory.h"
+#include "filesys/file.h"
 #include <debug.h>
 #include <list.h>
 #include <round.h>
@@ -196,6 +198,16 @@ inode_remove (struct inode *inode)
 {
   ASSERT (inode != NULL);
   inode->removed = true;
+  if (inode_is_dir (inode))
+    {
+      char name[NAME_MAX + 1];
+      struct dir *dir = dir_open (inode);
+      while (dir_readdir (dir, name))
+        {
+          struct file *file = filesys_open (name);
+          inode_remove (file_get_inode (file));
+        }
+    }
 }
 
 /* Read disk sector block to memory buffer */
@@ -382,4 +394,10 @@ int
 inode_is_dir (struct inode *inode)
 {
   return inode->data.type_is_dir;
+}
+
+bool
+inode_is_removed (struct inode *inode)
+{
+  return inode->removed;
 }
