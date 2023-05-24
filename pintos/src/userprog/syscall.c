@@ -47,6 +47,7 @@ args_are_valid (uint32_t *args)
     case SYS_CLOSE:
     case SYS_MKDIR:
     case SYS_ISDIR:
+    case SYS_INUMBER:
       if (!is_block_valid (args + 1, sizeof (uint32_t)))
         return false;
 
@@ -291,6 +292,12 @@ syscall_handler (struct intr_frame *f)
     {
       int fd = args[1];
       f->eax = filesys_is_dir (find_file (fd));
+    }
+
+  else if (args[0] == SYS_INUMBER)
+    {
+      int fd = args[1];
+      f->eax = file_get_inumber(find_file(fd));
     }
 
   else if (args[0] == SYS_CACHE_HIT)

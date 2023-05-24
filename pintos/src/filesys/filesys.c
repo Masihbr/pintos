@@ -131,5 +131,11 @@ do_format (void)
 bool
 next_dir_entry (struct file *file, char *buffer)
 {
-  return dir_readdir(dir_open(file_get_inode(file)), buffer);
+  return dir_readdir (dir_open (file_get_inode (file)), buffer);
+}
+
+int
+file_get_inumber (struct file *file)
+{
+  return inode_get_inumber (file_get_inode (file));
 }
