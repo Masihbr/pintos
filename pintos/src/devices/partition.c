@@ -88,6 +88,7 @@ read_partition_table (struct block *block, block_sector_t sector,
   pt = malloc (sizeof *pt);
   if (pt == NULL)
     PANIC ("Failed to allocate memory for partition table.");
+  // printf("block_read (block, 0, pt)\n");
   block_read (block, 0, pt);
 
   /* Check signature. */
@@ -304,6 +305,7 @@ static void
 partition_read (void *p_, block_sector_t sector, void *buffer)
 {
   struct partition *p = p_;
+  // printf("block_read (p->block, p->start + sector, buffer);\n");
   block_read (p->block, p->start + sector, buffer);
 }
 

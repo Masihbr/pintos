@@ -99,6 +99,7 @@ fsutil_extract (char **argv UNUSED)
       int size;
 
       /* Read and parse ustar header. */
+      // printf("block_read (src, sector++, header);\n");
       block_read (src, sector++, header);
       error = ustar_parse_header (header, &file_name, &type, &size);
       if (error != NULL)
@@ -130,6 +131,7 @@ fsutil_extract (char **argv UNUSED)
               int chunk_size = (size > BLOCK_SECTOR_SIZE
                                 ? BLOCK_SECTOR_SIZE
                                 : size);
+              // printf("block_read (src, sector++, data);\n");
               block_read (src, sector++, data);
               if (file_write (dst, data, chunk_size) != chunk_size)
                 PANIC ("%s: write failed with %d bytes unwritten",
