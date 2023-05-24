@@ -2,6 +2,7 @@
 #include "filesys/cache.h"
 #include "filesys/directory.h"
 #include "filesys/filesys.h"
+#include "filesys/inode.h"
 #include "lib/stdio.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
@@ -16,7 +17,6 @@ static void syscall_handler (struct intr_frame *);
 void
 syscall_init (void)
 {
-  lock_init (&fs_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -111,7 +111,6 @@ syscall_handler (struct intr_frame *f)
   else if (args[0] == SYS_EXEC)
     {
       char *cmd = args[1];
-      // if (!is_abosulte_path)
       if (!is_cmd_valid (cmd))
         exit (f, -1);
       else
@@ -141,9 +140,8 @@ syscall_handler (struct intr_frame *f)
             f->eax = -1;
           else
             {
-              lock_acquire (&fs_lock);
+              
               f->eax = file ? file_write (file->f, buffer, size) : -1;
-              lock_release (&fs_lock);
             }
         }
     }
@@ -167,10 +165,10 @@ syscall_handler (struct intr_frame *f)
         }
       else
         {
-          struct file_t *file = find_file (fd);
-          lock_acquire (&fs_lock);
-          f->eax = file ? file_read (file->f, buffer, size) : -1;
-          lock_release (&fs_lock);
+          struct file_t *file = find_file (fd)->f;
+          file_aquire_lock(file);
+          f->eax = file ? file_read (file, buffer, size) : -1;
+          file_release_lock(file);
         }
     }
 
@@ -184,9 +182,7 @@ syscall_handler (struct intr_frame *f)
         exit (f, -1);
       else
         {
-          lock_acquire (&fs_lock);
-          f->eax = filesys_create (file_name, initial_size, false); /* retrun val */
-          lock_release (&fs_lock);
+          f->eax = filesys_create (file_name, initial_size, false);
         }
     }
 
@@ -199,9 +195,7 @@ syscall_handler (struct intr_frame *f)
         exit (f, -1);
       else
         {
-          lock_acquire (&fs_lock);
-          f->eax = filesys_remove (file_name); /* retrun val */
-          lock_release (&fs_lock);
+          f->eax = filesys_remove (file_name);
         }
     }
 
@@ -213,7 +207,6 @@ syscall_handler (struct intr_frame *f)
         exit (f, -1);
       else
         {
-          lock_acquire (&fs_lock);
           struct file *file = filesys_open (file_name);
           if (file == NULL)
             f->eax = -1;
@@ -229,7 +222,6 @@ syscall_handler (struct intr_frame *f)
 
               f->eax = fd;
             }
-          lock_release (&fs_lock);
         }
     }
 
@@ -241,9 +233,9 @@ syscall_handler (struct intr_frame *f)
         exit (f, -1);
       else
         {
-          lock_acquire (&fs_lock);
+          file_aquire_lock (file->f);
           f->eax = file_close (file->f);
-          lock_release (&fs_lock);
+          file_release_lock (file->f);
           list_remove (&file->elem);
         }
     }
@@ -252,9 +244,9 @@ syscall_handler (struct intr_frame *f)
     {
       int fd = args[1];
       struct file_t *file = find_file (fd);
-      lock_acquire (&fs_lock);
+      file_aquire_lock (file->f);
       f->eax = file ? file_length (file->f) : -1;
-      lock_release (&fs_lock);
+      file_release_lock (file->f);
     }
 
   else if (args[0] == SYS_SEEK)
@@ -264,9 +256,9 @@ syscall_handler (struct intr_frame *f)
       struct file_t *file = find_file (fd);
       if (file != NULL)
         {
-          lock_acquire (&fs_lock);
+          file_aquire_lock (file->f);
           file_seek (file->f, pos);
-          lock_release (&fs_lock);
+          file_release_lock (file->f);
         }
     }
 
@@ -274,9 +266,9 @@ syscall_handler (struct intr_frame *f)
     {
       int fd = args[1];
       struct file_t *file = find_file (fd);
-      lock_acquire (&fs_lock);
+      file_aquire_lock (file->f);
       f->eax = file ? file_tell (file->f) : -1;
-      lock_release (&fs_lock);
+      file_release_lock (file->f);
     }
 
   else if (args[0] == SYS_CHDIR)

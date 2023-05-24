@@ -19,5 +19,7 @@ bool filesys_remove (const char *name);
 bool filesys_is_dir (struct file *file);
 bool next_dir_entry (struct file *, char *);
 int file_get_inumber (struct file *);
+void file_aquire_lock(struct file*);
+void file_release_lock(struct file*);
 
 #endif /* filesys/filesys.h */

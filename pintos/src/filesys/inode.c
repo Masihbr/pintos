@@ -66,7 +66,7 @@ struct inode_disk *
 get_inode_disk (const struct inode *inode)
 {
   ASSERT (inode != NULL);
-  struct inode_disk *disk_inode = malloc (sizeof *disk_inode);
+  struct inode_disk *disk_inode = malloc (sizeof (struct inode_disk));
   read_cache_block (inode->sector, 0, (void *) disk_inode, 0, BLOCK_SECTOR_SIZE);
   return disk_inode;
 }
@@ -161,6 +161,7 @@ inode_create (block_sector_t sector, off_t length, bool type_is_dir)
       printf("inode_create: disk_inode=%p disk_inode->type_is_dir=%d\n", disk_inode, disk_inode->type_is_dir);
       if (inode_disk_allocate (disk_inode, length))
         {
+          printf("inode_create: before write_cache_block (sector, 0, disk_inode, 0, BLOCK_SECTOR_SIZE) %p %d\n", sector, disk_inode);
           write_cache_block (sector, 0, disk_inode, 0, BLOCK_SECTOR_SIZE);
           success = true;
         }
@@ -557,4 +558,16 @@ bool
 inode_is_removed (struct inode *inode)
 {
   return inode->removed;
+}
+
+void
+inode_aquire_lock (struct inode *inode)
+{
+  lock_acquire (&inode->ilock);
+}
+
+void
+inode_release_lock (struct inode *inode)
+{
+  lock_release (&inode->ilock);
 }
