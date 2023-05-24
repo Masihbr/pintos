@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "filesys/directory.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -250,6 +251,19 @@ find_status (tid_t tid)
         return s;
     }
   return NULL;
+}
+
+bool
+thread_chdir (char *path)
+{
+  struct dir *dir;
+  if (!(dir = dir_open_path (path)))
+    return false;
+
+  dir_close(thread_current()->cwd);
+  thread_current()->cwd = dir;
+
+  return true;
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled

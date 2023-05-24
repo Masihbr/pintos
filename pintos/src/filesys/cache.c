@@ -93,6 +93,7 @@ find_cache_block (block_sector_t sector_idx, bool do_read)
   if (do_read)
     {
       get_cache_stats_instance ()->read++;
+      // printf("block_read (fs_device, sector_idx, cache_block->data);\n");
       block_read (fs_device, sector_idx, cache_block->data);
     }
   cache_block->sector = sector_idx;
