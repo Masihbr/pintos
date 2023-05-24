@@ -135,13 +135,14 @@ syscall_handler (struct intr_frame *f)
       else
         {
           struct file_t *file;
-          printf("filesys_is_dir (file = find_file (fd)) = %d\n", filesys_is_dir (file = find_file (fd)));
+          // printf("filesys_is_dir (file = find_file (fd)) = %d\n", filesys_is_dir (file = find_file (fd)));
           if (filesys_is_dir (file = find_file (fd)))
             f->eax = -1;
           else
             {
-              
+              file_aquire_lock(file->f);
               f->eax = file ? file_write (file->f, buffer, size) : -1;
+              file_release_lock(file->f);
             }
         }
     }
@@ -181,9 +182,7 @@ syscall_handler (struct intr_frame *f)
           || !is_block_valid (file_name, strlen (file_name) + 1))
         exit (f, -1);
       else
-        {
-          f->eax = filesys_create (file_name, initial_size, false);
-        }
+        f->eax = filesys_create (file_name, initial_size, false);
     }
 
   else if (args[0] == SYS_REMOVE)
@@ -194,9 +193,7 @@ syscall_handler (struct intr_frame *f)
           || !is_block_valid (file_name, strlen (file_name) + 1))
         exit (f, -1);
       else
-        {
-          f->eax = filesys_remove (file_name);
-        }
+        f->eax = filesys_remove (file_name);
     }
 
   else if (args[0] == SYS_OPEN)
@@ -233,9 +230,7 @@ syscall_handler (struct intr_frame *f)
         exit (f, -1);
       else
         {
-          file_aquire_lock (file->f);
           f->eax = file_close (file->f);
-          file_release_lock (file->f);
           list_remove (&file->elem);
         }
     }

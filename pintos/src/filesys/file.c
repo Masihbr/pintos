@@ -64,7 +64,7 @@ file_get_inode (struct file *file)
 bool
 file_is_dir (struct file *file)
 {
-  printf("file_is_dir: file=%p file->inode=%p inode_is_dir(file->inode)=%d\n", file, file->inode, inode_is_dir(file->inode));
+  // printf("file_is_dir: file=%p file->inode=%p inode_is_dir(file->inode)=%d\n", file, file->inode, inode_is_dir(file->inode));
   return inode_is_dir(file->inode) == 1;
 }
 

@@ -109,13 +109,13 @@ void
 read_cache_block (block_sector_t sector_idx, off_t sector_ofs, void *buffer,
                   off_t bytes_read, int chunk_size)
 {
-  printf("read_cache_block (sector_idx=%d, sector_ofs=%d)\n", sector_idx, sector_ofs);
+  // printf("read_cache_block (sector_idx=%d, sector_ofs=%d)\n", sector_idx, sector_ofs);
   cache_block_t *cache_block = find_cache_block (sector_idx, true);
-  printf("read_cache_block: cache_block=%p\n", cache_block);
+  // printf("read_cache_block: cache_block=%p\n", cache_block);
   ASSERT (cache_block != NULL);
   lock_acquire (&(cache_block->lock));
   memcpy (buffer + bytes_read, cache_block->data + sector_ofs, chunk_size);
-  printf("read_cache_block: buffer + bytes_read=%d\n", buffer + bytes_read);
+  // printf("read_cache_block: buffer + bytes_read=%d\n", buffer + bytes_read);
   lock_release (&(cache_block->lock));
 }
 
@@ -124,15 +124,15 @@ void
 write_cache_block (block_sector_t sector_idx, off_t sector_ofs, void *buffer,
                    off_t bytes_written, int chunk_size)
 {
-  printf("write_cache_block (sector_idx=%d, sector_ofs=%d)\n", sector_idx, sector_ofs);
+  // printf("write_cache_block (sector_idx=%d, sector_ofs=%d)\n", sector_idx, sector_ofs);
   bool do_read = !(sector_ofs == 0 && chunk_size == BLOCK_SECTOR_SIZE);
-  printf("write_cache_block: do_read=%d\n", do_read);
+  // printf("write_cache_block: do_read=%d\n", do_read);
   cache_block_t *cache_block = find_cache_block (sector_idx, do_read);
-  printf("write_cache_block: cache_block=%p\n", cache_block);
+  // printf("write_cache_block: cache_block=%p\n", cache_block);
   ASSERT (cache_block != NULL);
   lock_acquire (&(cache_block->lock));
   memcpy (cache_block->data + sector_ofs, buffer + bytes_written, chunk_size);
-  printf("read_cache_block: cache_block->data + sector_ofs=%d\n", cache_block->data + sector_ofs);
+  // printf("read_cache_block: cache_block->data + sector_ofs=%d\n", cache_block->data + sector_ofs);
   cache_block->dirty = true;
   lock_release (&(cache_block->lock));
 }

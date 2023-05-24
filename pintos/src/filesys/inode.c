@@ -158,10 +158,10 @@ inode_create (block_sector_t sector, off_t length, bool type_is_dir)
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
       disk_inode->type_is_dir = type_is_dir;
-      printf("inode_create: disk_inode=%p disk_inode->type_is_dir=%d\n", disk_inode, disk_inode->type_is_dir);
+      // printf("inode_create: disk_inode=%p disk_inode->type_is_dir=%d\n", disk_inode, disk_inode->type_is_dir);
       if (inode_disk_allocate (disk_inode, length))
         {
-          printf("inode_create: before write_cache_block (sector, 0, disk_inode, 0, BLOCK_SECTOR_SIZE) %p %d\n", sector, disk_inode);
+          // printf("inode_create: before write_cache_block (sector, 0, disk_inode, 0, BLOCK_SECTOR_SIZE) %p %d\n", sector, disk_inode);
           write_cache_block (sector, 0, disk_inode, 0, BLOCK_SECTOR_SIZE);
           success = true;
         }
@@ -277,7 +277,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   uint8_t *buffer = buffer_;
   off_t bytes_read = 0;
 
-  lock_acquire (&inode->ilock);
+  // lock_acquire (&inode->ilock);
 
   while (size > 0)
     {
@@ -304,7 +304,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       bytes_read += chunk_size;
     }
   
-  lock_release (&inode->ilock);
+  // lock_release (&inode->ilock);
 
   return bytes_read;
 }
@@ -324,7 +324,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   if (inode->deny_write_cnt)
     return 0;
 
-  lock_acquire (&inode->ilock);
+  // lock_acquire (&inode->ilock);
   
   /* extend file if needed */
   if (byte_to_sector (inode, offset + size - 1) == (size_t) -1)
@@ -367,7 +367,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       bytes_written += chunk_size;
     }
   
-  lock_release (&inode->ilock);
+  // lock_release (&inode->ilock);
 
   return bytes_written;
 }
@@ -549,8 +549,8 @@ static bool deallocate_indirect (block_sector_t sector_num, size_t num_sectors_t
 int
 inode_is_dir (struct inode *inode)
 {
-  printf ("inode_is_dir: inode=%p get_inode_disk (inode)=%p get_inode_disk(inode)->type_is_dir=%d\n", inode, get_inode_disk (inode),
-          get_inode_disk (inode)->type_is_dir);
+  // printf ("inode_is_dir: inode=%p get_inode_disk (inode)=%p get_inode_disk(inode)->type_is_dir=%d\n", inode, get_inode_disk (inode),
+  //         get_inode_disk (inode)->type_is_dir);
   return get_inode_disk (inode)->type_is_dir;
 }
 
