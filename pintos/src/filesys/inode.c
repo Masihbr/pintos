@@ -158,7 +158,7 @@ inode_create (block_sector_t sector, off_t length, bool type_is_dir)
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
       disk_inode->type_is_dir = type_is_dir;
-      // printf("inode_create: disk_inode=%p disk_inode->type_is_dir=%d\n", disk_inode, disk_inode->type_is_dir);
+      printf("inode_create: disk_inode=%p disk_inode->type_is_dir=%d\n", disk_inode, disk_inode->type_is_dir);
       if (inode_disk_allocate (disk_inode, length))
         {
           // printf("inode_create: before write_cache_block (sector, 0, disk_inode, 0, BLOCK_SECTOR_SIZE) %p %d\n", sector, disk_inode);
@@ -549,8 +549,8 @@ static bool deallocate_indirect (block_sector_t sector_num, size_t num_sectors_t
 int
 inode_is_dir (struct inode *inode)
 {
-  // printf ("inode_is_dir: inode=%p get_inode_disk (inode)=%p get_inode_disk(inode)->type_is_dir=%d\n", inode, get_inode_disk (inode),
-  //         get_inode_disk (inode)->type_is_dir);
+  printf ("inode_is_dir: inode=%p get_inode_disk (inode)=%p get_inode_disk(inode)->type_is_dir=%d\n", inode, get_inode_disk (inode),
+          get_inode_disk (inode)->type_is_dir);
   return get_inode_disk (inode)->type_is_dir;
 }
 
