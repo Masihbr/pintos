@@ -135,10 +135,16 @@ syscall_handler (struct intr_frame *f)
         putbuf (buffer, (f->eax = size));
       else
         {
-          struct file_t *file = find_file (fd);
-          lock_acquire (&fs_lock);
-          f->eax = file ? file_write (file->f, buffer, size) : -1;
-          lock_release (&fs_lock);
+          struct file_t *file;
+          printf("filesys_is_dir (file = find_file (fd)) = %d\n", filesys_is_dir (file = find_file (fd)));
+          if (filesys_is_dir (file = find_file (fd)))
+            f->eax = -1;
+          else
+            {
+              lock_acquire (&fs_lock);
+              f->eax = file ? file_write (file->f, buffer, size) : -1;
+              lock_release (&fs_lock);
+            }
         }
     }
 
