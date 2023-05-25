@@ -23,7 +23,7 @@ cache_init (void)
   for (int i = 0; i < CACHE_BLOCKS_COUNT; i++)
     {
       cache_blocks[i].dirty = false;
-      cache_blocks[i].sector = NULL;
+      cache_blocks[i].sector = -1;
       lock_init (&(cache_blocks[i].lock));
       list_push_back (&lru_cache_list, &(cache_blocks[i].elem));
     }
@@ -41,13 +41,13 @@ cache_flush (void)
        e = list_next (e))
     {
       cache_block = list_entry (e, cache_block_t, elem);
-      if (cache_block->dirty)
+      if (cache_block->dirty && cache_block->sector != -1)
         {
           get_cache_stats_instance ()->write++;
           block_write (fs_device, cache_block->sector, cache_block->data);
         }
       cache_block->dirty = false;
-      cache_block->sector = NULL;
+      cache_block->sector = -1;
     }
   lock_release (&lru_cache_list_lock);
 }
