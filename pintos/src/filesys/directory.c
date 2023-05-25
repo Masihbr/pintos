@@ -355,6 +355,29 @@ done:
   return success;
 }
 
+bool
+check_if_subdir_is_cwd (struct inode *inode)
+{
+  struct dir *dir = dir_open (inode);
+  struct dir_entry e;
+  off_t ofs;
+  bool result = false;
+
+  inode_aquire_lock (dir_get_inode (dir));
+
+  for (ofs = 0; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
+       ofs += sizeof e)
+    if (e.in_use && strcmp (e.name, ".") == 0)
+      {
+        result = true;
+        break;
+      }
+
+  inode_release_lock (dir_get_inode (dir));
+  dir_close (dir);
+  return result;
+}
+
 /* Removes any entry for NAME in DIR.
    Returns true if successful, false on failure,
    which occurs only if there is no file with the given NAME. */
@@ -392,18 +415,7 @@ dir_remove (struct dir *dir, const char *name)
   /* If the dir to be deleted is or has cwd. */
   if (inode_is_dir (inode) && thread_current ()->cwd)
     {
-      bool cwd_is_child = thread_current ()->cwd->inode == inode;
-      // printf ("dir_remove: cwd_is_child=%d\n", cwd_is_child);
-      char name[NAME_MAX + 1];
-      while (!cwd_is_child && dir_readdir (dir, name))
-        {
-          struct file *file = filesys_open (name);
-          cwd_is_child
-              |= filesys_is_dir (file)
-                 && file_get_inode (file) == thread_current ()->cwd->inode;
-          // printf ("dir_remove: cwd_is_child=%d\n", cwd_is_child);
-        }
-      if (cwd_is_child)
+      if (check_if_subdir_is_cwd (inode))
         {
           success = false;
           goto done;
