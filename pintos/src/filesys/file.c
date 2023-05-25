@@ -61,10 +61,21 @@ file_get_inode (struct file *file)
   return file->inode;
 }
 
+off_t
+file_get_pos (struct file *file)
+{
+  return file->pos;
+}
+
+void
+file_set_pos (struct file *file, off_t new_pos)
+{
+  file->pos = new_pos;
+}
+
 bool
 file_is_dir (struct file *file)
 {
-  // printf("file_is_dir: file=%p file->inode=%p inode_is_dir(file->inode)=%d\n", file, file->inode, inode_is_dir(file->inode));
   return inode_is_dir(file->inode) == 1;
 }
 

@@ -129,7 +129,11 @@ do_format (void)
 bool
 next_dir_entry (struct file *file, char *buffer)
 {
-  return dir_readdir (dir_open (file_get_inode (file)), buffer);
+  struct dir *dir = dir_open (file_get_inode (file));
+  dir_set_pos(dir, file_get_pos(file));
+  bool result = dir_readdir (dir, buffer);
+  file_set_pos(file, dir_get_pos(dir));
+  return result;
 }
 
 int

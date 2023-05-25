@@ -2,6 +2,7 @@
 #define FILESYS_DIRECTORY_H
 
 #include "devices/block.h"
+#include "off_t.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -24,6 +25,8 @@ struct dir *dir_open_root (void);
 struct dir *dir_reopen (struct dir *);
 void dir_close (struct dir *);
 struct inode *dir_get_inode (struct dir *);
+void dir_set_pos (struct dir *, off_t new_pos);
+off_t dir_get_pos (struct dir *);
 
 /* Reading and writing. */
 bool dir_lookup (const struct dir *, const char *name, struct inode **);

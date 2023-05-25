@@ -303,7 +303,7 @@ syscall_handler (struct intr_frame *f)
       char *buf = args[2];
       struct file_t *file = find_file (fd);
       if (!file || !filesys_is_dir (file->f))
-        exit(f, -1);
+        exit (f, -1);
       else
         f->eax = next_dir_entry (file->f, buf);
     }

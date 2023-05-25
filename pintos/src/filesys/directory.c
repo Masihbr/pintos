@@ -211,6 +211,18 @@ dir_get_inode (struct dir *dir)
   return dir->inode;
 }
 
+void
+dir_set_pos (struct dir *dir, off_t new_pos)
+{
+  dir->pos = new_pos;
+}
+
+off_t
+dir_get_pos (struct dir *dir)
+{
+  return dir->pos;
+}
+
 /* Searches DIR for a file with the given NAME.
    If successful, returns true, sets *EP to the directory entry
    if EP is non-null, and sets *OFSP to the byte offset of the
