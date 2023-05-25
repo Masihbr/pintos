@@ -256,12 +256,25 @@ find_status (tid_t tid)
 bool
 thread_chdir (char *path)
 {
-  struct dir *dir;
-  if (!(dir = dir_open_path (path)))
+
+  // char name2[NAME_MAX + 1];
+  // while (thread_current()->cwd && dir_readdir (thread_current()->cwd, name2))
+  //   {
+  //     printf ("thread_chdir(%p, %s)\n", dir_get_inumber(thread_current()->cwd), name2);
+  //   }
+  struct dir *dir = dir_open_path (path);
+  // printf ("thread_chdir(%s, dir=%p) before_cwd=%p\n", path, dir, thread_current ()->cwd);
+  if (!dir)
     return false;
 
   dir_close(thread_current()->cwd);
   thread_current()->cwd = dir;
+  // printf ("thread_chdir(%s) current_cwd=%p\n", path, thread_current ()->cwd);
+
+  // while (thread_current()->cwd && dir_readdir (thread_current()->cwd, name2))
+  //   {
+  //     printf ("thread_chdir(%p, %s)\n", dir_get_inumber(thread_current()->cwd), name2);
+  //   }
 
   return true;
 }
