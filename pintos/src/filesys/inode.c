@@ -155,7 +155,7 @@ inode_create (block_sector_t sector, off_t length, bool type_is_dir)
       size_t sectors = bytes_to_sectors (length);
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
-      disk_inode->type_is_dir = type_is_dir;
+      disk_inode->type_is_dir = type_is_dir ? 1 : 0;
       // printf("inode_create: disk_inode=%p disk_inode->type_is_dir=%d\n", disk_inode, disk_inode->type_is_dir);
       if (inode_allocate (disk_inode, length))
         {
@@ -337,7 +337,8 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
         }
 
       disk_inode->length = offset + size;
-      write_cache_block (inode->sector, 0, (void *)disk_inode, 0, BLOCK_SECTOR_SIZE);
+      write_cache_block (inode->sector, 0, (void *) disk_inode, 0,
+                         BLOCK_SECTOR_SIZE);
       free (disk_inode);
     }
 

@@ -33,7 +33,7 @@ test_main (void)
 
   random_init (0);
   random_bytes (buf, sizeof buf);
-  buf[BUF_SIZE - 1] = NULL;
+  buf[BUF_SIZE - 1] = '\0';
 
   // write data in file.
   msg ("Going to write data in file.");
@@ -49,5 +49,5 @@ test_main (void)
   CHECK (CHUNK_CNT == count_cache_write (),
          "200 block writes.");
   CHECK ((count_cache_read ()) <= INFO_READ_MAX, "No read should have been made.");
-  remove (file_name);
+//   remove (file_name);
 }
