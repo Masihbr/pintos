@@ -90,7 +90,7 @@ bool
 separate_path_parent_from_filename (char *full_path, char *parent_name,
                                     char *file_name)
 {
-  if (!full_path || !full_path[0] || strlen (full_path) > NAME_MAX)
+  if (!full_path || !full_path[0])
     return false;
 
   int i;
