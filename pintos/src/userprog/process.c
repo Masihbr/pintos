@@ -55,7 +55,10 @@ process_execute (const char *file_name)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
-  sema_down (&find_thread (tid)->sema);
+  struct thread *t = find_thread (tid);
+  if (thread_current ()->cwd)
+    t->cwd = dir_reopen (thread_current ()->cwd);
+  sema_down (&t->sema);
   if (find_status (tid)->return_value == -1)
     return TID_ERROR;
   if (tid == TID_ERROR)
