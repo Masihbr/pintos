@@ -30,7 +30,23 @@ struct dir_entry
 bool
 dir_create (block_sector_t sector, size_t entry_cnt)
 {
-  return inode_create (sector, entry_cnt * sizeof (struct dir_entry), true);
+  bool result;
+  if (result
+      = inode_create (sector, entry_cnt * sizeof (struct dir_entry), true))
+    {
+      struct dir *dir = dir_open (inode_open (sector));
+      struct dir_entry e;
+      e.inode_sector = sector;
+      e.in_use = false;
+
+      inode_aquire_lock (dir->inode);
+      if (inode_write_at (dir->inode, &e, sizeof (e), 0) != sizeof (e))
+        result = false;
+
+      inode_release_lock (dir->inode);
+      dir_close (dir);
+    }
+  return result;
 }
 
 bool
@@ -131,7 +147,7 @@ dir_open_path (char *path)
   if (is_abosulte_path (path) || !thread_current ()->cwd)
     current = dir_open_root ();
   else
-    current = thread_current ()->cwd;
+    current = dir_reopen(thread_current ()->cwd);
 
   char token[NAME_MAX + 1];
   *token = '\0';
@@ -237,15 +253,13 @@ dir_lookup (const struct dir *dir, const char *name, struct inode **inode)
 
   if (lookup (dir, name, &e, NULL))
     *inode = inode_open (e.inode_sector);
-  else if (strcmp (name, ".") == 0)
+  else if (strcmp (name, ".") == 0 || strlen (name) == 0)
     *inode = inode_reopen (dir->inode);
   else if (strcmp (name, "..") == 0)
     {
       inode_read_at (dir->inode, &e, sizeof (e), 0);
       *inode = inode_open (e.inode_sector);
     }
-  else if (strlen (name) == 0)
-    *inode = dir->inode;
   else
     *inode = NULL;
 
