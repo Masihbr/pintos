@@ -101,9 +101,11 @@ filesys_remove (const char *name)
   char parent_name[strlen (name) + 1], file_name[NAME_MAX + 1];
   parent_name[0] = file_name[0] = NULL;
   separate_path_parent_from_filename (name, parent_name, file_name);
+  // printf("filesys_remove: separate_path_parent_from_filename (%s, %s, %s)\n", name, parent_name, file_name);
   struct dir *dir = dir_open_path (parent_name);
   bool success = dir && dir_remove (dir, file_name);
   dir_close (dir);
+  // printf("filesys_remove: success = %d\n", success);
 
   return success;
 }

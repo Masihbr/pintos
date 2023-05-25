@@ -143,6 +143,7 @@ dir_open (struct inode *inode)
 struct dir *
 dir_open_path (char *path)
 {
+  // printf("dir_open_path(%s)\n", path);
   struct dir *current;
   if (is_abosulte_path (path) || !thread_current ()->cwd)
     current = dir_open_root ();
@@ -161,6 +162,7 @@ dir_open_path (char *path)
           return NULL;
         }
       next = dir_open (inode);
+      // printf("next = %p\n", next);
       if (!next)
         {
           dir_close (current);
@@ -174,6 +176,7 @@ dir_open_path (char *path)
       dir_close (current);
       return NULL;
     }
+  // printf("current = %p\n", current);
   return current;
 }
 
@@ -262,6 +265,7 @@ dir_lookup (const struct dir *dir, const char *name, struct inode **inode)
 
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
+  // printf("dir_lookup(name=%s)", name);
 
   if (lookup (dir, name, &e, NULL))
     *inode = inode_open (e.inode_sector);
@@ -274,6 +278,7 @@ dir_lookup (const struct dir *dir, const char *name, struct inode **inode)
     }
   else
     *inode = NULL;
+  // printf(" inode=%p\n", inode);
 
   return *inode != NULL;
 }
@@ -366,9 +371,18 @@ dir_remove (struct dir *dir, const char *name)
 
   inode_aquire_lock (dir_get_inode (dir));
 
+  // char name2[NAME_MAX + 1];
+  // while (dir_readdir (dir, name2))
+  //   {
+  //     printf ("dir_readdir(%p, %s)\n", dir, name2);
+  //   }
+
   /* Find directory entry. */
   if (!lookup (dir, name, &e, &ofs))
-    goto done;
+    {
+      // printf("lookup(%p, %s) failed\n", dir, name);
+      goto done;
+    }
 
   /* Open inode. */
   inode = inode_open (e.inode_sector);
