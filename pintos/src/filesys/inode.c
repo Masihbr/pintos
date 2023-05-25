@@ -204,6 +204,12 @@ inode_open (block_sector_t sector)
   return inode;
 }
 
+int
+inode_open_count (struct inode *inode)
+{
+  return inode->open_cnt;
+}
+
 /* Reopens and returns INODE. */
 struct inode *
 inode_reopen (struct inode *inode)

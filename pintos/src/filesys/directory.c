@@ -109,8 +109,8 @@ separate_path_parent_from_filename (char *full_path, char *parent_name,
     }
   else
     {
-      memcpy (parent_name, full_path, i);
-      parent_name[i] = '\0';
+      memcpy (parent_name, full_path, i + 1);
+      parent_name[i + 1] = '\0';
       memcpy (file_name, full_path + i + 1, strlen (full_path) - i - 1);
       file_name[strlen (full_path) - i - 1] = '\0';
     }
@@ -386,7 +386,7 @@ dir_remove (struct dir *dir, const char *name)
 
   /* Open inode. */
   inode = inode_open (e.inode_sector);
-  if (inode == NULL)
+  if (inode == NULL || inode_open_count (inode) > 1)
     goto done;
 
   /* If the dir to be deleted is or has cwd. */
@@ -408,6 +408,21 @@ dir_remove (struct dir *dir, const char *name)
           success = false;
           goto done;
         }
+
+      struct dir_entry e;
+      off_t ofs;
+
+      success = true;
+      for (ofs = 1 * sizeof e;
+           inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
+           ofs += sizeof e)
+        if (e.in_use)
+          {
+            success = false;
+            break;
+          }
+      if (!success) 
+        goto done;
     }
 
   /* Erase directory entry. */

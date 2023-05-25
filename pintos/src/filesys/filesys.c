@@ -48,19 +48,16 @@ filesys_done (void)
 bool
 filesys_create (const char *name, off_t initial_size, bool type_is_dir)
 {
-  // printf("filesys_create(%s)\n", name);
   block_sector_t inode_sector = 0;
   char parent_name[strlen (name) + 1], file_name[strlen (name) + 1];
   parent_name[0] = file_name[0] = NULL;
-  bool seperate_result
+  bool separate_result
       = separate_path_parent_from_filename (name, parent_name, file_name);
-  // printf("seperate_result(%s, %s, %s)\n", name, parent_name, file_name);
   struct dir *dir = dir_open_path (parent_name);
 
-  bool success = seperate_result && dir && free_map_allocate (1, &inode_sector)
+  bool success = separate_result && dir && free_map_allocate (1, &inode_sector)
                  && inode_create (inode_sector, initial_size, type_is_dir)
                  && dir_add (dir, file_name, inode_sector, type_is_dir);
-  // printf("suceess = %d\n", success);
   if (!success && inode_sector != 0)
     free_map_release (inode_sector, 1);
   dir_close (dir);
@@ -78,12 +75,12 @@ filesys_open (const char *name)
 {
   char parent_name[strlen (name) + 1], file_name[NAME_MAX + 1];
   parent_name[0] = file_name[0] = NULL;
-  bool seperate_result
+  bool separate_result
       = separate_path_parent_from_filename (name, parent_name, file_name);
   struct dir *dir = dir_open_path (parent_name);
   struct inode *inode = NULL;
 
-  if (!dir || !seperate_result)
+  if (!dir || !separate_result)
     return NULL;
 
   dir_lookup (dir, file_name, &inode);
